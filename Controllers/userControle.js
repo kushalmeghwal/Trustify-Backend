@@ -1,14 +1,4 @@
 
-const { connectneo4j } = require("../Services/connection");
-
-const neo4j = require("neo4j-driver");
-const uri = "bolt://3.80.131.170:7687";
-const user = "neo4j";
-const password = "formation-barrel-liberties";
-
-const driver = connectneo4j(uri, user, password);
-
-
 //get function
 
 async function getUsers(req,res) {
@@ -79,9 +69,11 @@ async function getUsers(req,res) {
     .then((result)=>{
         if(result !== undefined){
             console.log(result);
-            return res.end("user register sucessfully from backend");
+            return res.status(200).json({  //res.end("user register sucessfully from backend");
+                message:"user register sucessfully from backend"
+            })
         }
-        return res.end("user not register sucessfully from backend");
+        return res.send("user not register sucessfully from backend");
 
     })
     .catch((err)=>console.log(err))
