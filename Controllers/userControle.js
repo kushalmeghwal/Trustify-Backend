@@ -1,8 +1,9 @@
+//import driver for session
 const { connectNeo4j }=require('../config/database');
 
 let neo4jDriver;
 try {
-    neo4jDriver = connectNeo4j();
+    neo4jDriver = connectNeo4j();//getting driver
 } catch (error) {
     console.error("Failed to connect to the Neo4j database:", error.message);
     process.exit(1); // Exit the process if the database connection fails
@@ -102,13 +103,13 @@ async function updateContactsList(req,res){
         )
         .then((result)=>{
             if(result !== undefined){
-                updationRelationship(mobile,contacts_list)
+                updationRelationship(mobile)
                 console.log(result);
                 return res.status(200).json({  //res.end("user register sucessfully from backend");
                     message:"contact list updated succefully "
                 })
             }
-          return res.send("users contacts not updated sucessfully from backend");
+          return res.send(" contacts not updated sucessfully from backend");
 
         })
         .catch((err)=>console.log(err))
@@ -116,7 +117,8 @@ async function updateContactsList(req,res){
             session.close();  
         });
 }
- async function updationRelationship(mobile , contacts_list){
+// function for make has-contact relationship 
+ async function updationRelationship(mobile){
       const session = neo4jDriver.session();
      await session
       .run('Match (u:user{mobile_no : $mobile}) UNWIND u.contacts AS contact_number MATCH (c:user{mobile_no:contact_number}) MERGE (u)-[:HAS_CONTACT]->(c)',

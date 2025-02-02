@@ -11,7 +11,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 
-// Connect to the Neo4j database
 
 
 
