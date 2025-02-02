@@ -12,13 +12,14 @@ app.use(express.json());
 
 
 // Connect to the Neo4j database
-const {connectNeo4j}=require('./config/database');
+let driver=null;
 try {
-    connectNeo4j();
+    driver=connectNeo4j();
 } catch (error) {
     console.error("Failed to connect to the Neo4j database:", error.message);
     process.exit(1); // Exit the process if the database connection fails
 }
+
 
 
 //mount the route
@@ -36,3 +37,5 @@ process.on("SIGINT", async () => {
     console.log("Neo4j driver connection closed.");
     process.exit(0);
 });
+
+module.exports = { getDriver: ()=> driver };

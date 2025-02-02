@@ -1,6 +1,20 @@
 
 //get function
+const { getDriver }=require('../app');
+// const neo4j=require('neo4j-driver');
+const {connectNeo4j}=require('../config/database');
 
+
+// // Connect to the Neo4j database
+// let driver=null;
+// try {
+//     driver=connectNeo4j();
+// } catch (error) {
+//     console.error("Failed to connect to the Neo4j database:", error.message);
+//     process.exit(1); // Exit the process if the database connection fails
+// }
+
+const driver=getDriver();
 async function getUsers(req,res) {
         const { mobile, password } = req.query;
     
@@ -11,7 +25,7 @@ async function getUsers(req,res) {
      
         console.log("Mobile:", mobile);
         console.log("Password:", password);
-        console.log("ye app.get ke login me h");
+      
        
         const session = driver.session();
     
