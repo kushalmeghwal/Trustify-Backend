@@ -4,21 +4,13 @@ const app = express();
 
 //import configuration
 require('dotenv').config();
-const PORT=process.env.PORT || 3000;
+const PORT=process.env.PORT;
 
 //middleware to parse
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 
-// Connect to the Neo4j database
-let driver=null;
-try {
-    driver=connectNeo4j();
-} catch (error) {
-    console.error("Failed to connect to the Neo4j database:", error.message);
-    process.exit(1); // Exit the process if the database connection fails
-}
 
 
 
@@ -33,7 +25,7 @@ app.listen(PORT, () => {
 
 // Ensure driver is closed on process exit
 process.on("SIGINT", async () => {
-    await neo4jDriver.close();
+  //  await neo4jDriver.close();
     console.log("Neo4j driver connection closed.");
     process.exit(0);
 });
