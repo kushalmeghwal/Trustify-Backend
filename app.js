@@ -11,9 +11,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 
-
-
-
 //mount the route
 const userRouter = require("./Routes/userRoute");
 app.use("/api/v1", userRouter);
@@ -30,4 +27,3 @@ process.on("SIGINT", async () => {
     process.exit(0);
 });
 
-module.exports = { getDriver: ()=> driver };
