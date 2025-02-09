@@ -1,6 +1,19 @@
+//import env
+require('dotenv').config();
+
 //import driver for session
 const { connectNeo4j }=require('../config/database');
 
+//import bcrypt for password hashing
+const bcrypt=require('bcrypt');
+
+//import jwt for token generation
+const jwt = require('jsonwebtoken');
+
+// // Import the Neode instance and User model from models.js
+// const { neode, User } = require('../Models/userModel');
+
+//connect to the database
 let neo4jDriver;
 try {
     neo4jDriver = connectNeo4j();//getting driver
@@ -9,53 +22,70 @@ try {
     process.exit(1); // Exit the process if the database connection fails
 }
 
+
+
+//actual functions
 async function getUsers(req,res) {
         const { mobile, password } = req.query;
     
-        // Validate input
         if (!mobile || !password) {
             return res.status(400).json({ error: "Mobile and password are required" });
         }
-     
         console.log("Mobile:", mobile);
-        console.log("Password:", password);
-        console.log("ye app.get ke login me h");
-       
         const session = neo4jDriver.session();
-    
-        session
-            .run(
-                "MATCH (u:user {mobile_no: $mobile, password: $password}) RETURN u",
-                { mobile: mobile, password: password }
-            )
-            .then((result) => {
-                if (result.records.length > 0) {
-                    const users = result.records.map((record) => {
-                        const userNode = record.get("u");
-                        return {
-                            name: userNode.properties.name,
-                            mobile:  userNode.properties.mobile,
-                            password: userNode.properties.password,
-                            email: userNode.properties.email,
-                        };
-                    });
-                   console.log("return user from backend");
-                   res.setHeader("Content-Type", "application/json");
-                    return res.status(200).json(users); 
-                } else {
-                    return res.status(404).json({ error: "User not found from backend" });
-                }
-            })
-            .catch((err) => {
+        try{
+            //fetch user by mobile no
+            const result=await session.run(
+                "MATCH (u:user {mobile_no: $mobile}) RETURN u",
+                { mobile}
+            );
+       
+        
+            if(result.records.length===0){
+                return res.status(404).json({error:'user not found from backend'});
+            }
+            const userNode=result.records[0].get('u');
+            const hashedPassword=userNode.properties.password;
+            
+            // Compare entered password with stored hashed password
+            const passwordMatch=await bcrypt.compare(password,hashedPassword);
+            
+            if(!passwordMatch){
+                console.log('wrong password!!');
+                return res.status(401).json({error:'Invalid Password'});
+            }
+                  //generate JWT token
+                  const token = jwt.sign(
+                    {
+                        userId:userNode.identity.low,
+                        mobile:userNode.properties.mobile_no,
+                        email:userNode.properties.email
+                    },
+                    process.env.SECRET_KEY,
+                    {expiresIn:'1d'}
+                );
+             
+                  //return user data + token (without password for security)
+                  const userData={
+                    name: userNode.properties.name,
+                    mobile:  userNode.properties.mobile,
+                    email: userNode.properties.email,
+                    token
+                  };
+                  console.log("User authenticated successfully");
+                  res.setHeader("Content-Type", "application/json");
+                    return res.status(200).json(userData);
+               
+            }
+            catch(err) {
                 console.error("Database error:", err);
                 return res.status(500).json({ error: "Internal server error" });
-            })
-            .finally(() => {
-                session.close();  
-            });
+            }
+            finally {
+               await session.close();  
+            }
     }
 
-//-----------------------------------------------------------------------------
 
 //post function
 
@@ -66,76 +96,107 @@ async function getUsers(req,res) {
              const email= String(req.body.email);
              const password = String(req.body.password);
 
+             console.log("Received user details:", userName, mobile, email);
              const session = neo4jDriver.session();
-             console.log("nam pata aa gya h jese nam ho gya "+ userName);
 
+             try {
+                //check if user already exists
+                const existingUser=await session.run(
+                    "MATCH (u:user) WHERE u.mobile_no=$mobile RETURN u",
+                    {mobile}
+                );
+                if(existingUser.records.length>0){
+                    console.log('user already exists');
+                    return res.status(400).json({error:'user already exists'});
+                }
 
-    session
-    .run("CREATE (:user {name:$name,mobile_no:$mobile,email:$email,password:$password,contacts:[]})",
-        { name: userName, mobile: mobile, email: email, password:password} 
-    )
-    .then((result)=>{
+                //secure password
+                try{
+                    hashedPassword=await bcrypt.hash(password,10);
+                }
+                catch(err){
+                    return res.status(500).json({
+                        message:'error while hashing password',
+                    });
+                }
+                console.log('hashed password:',hashedPassword);
+                //create entry in database
+                const result = await session.run(
+                    "CREATE (:user {name:$name, mobile_no:$mobile, email:$email, password:$hashedPassword, contacts:[]})",
+                          { name: userName, mobile: mobile, email: email, hashedPassword: hashedPassword } // Use `hashedPassword` correctly
+                        );
+    
         if(result !== undefined){
-            console.log(result);
+            console.log("User registered successfully.");
             return res.status(200).json({  //res.end("user register sucessfully from backend");
                 message:"user register sucessfully from backend"
-            })
+            });
         }
-        return res.send("user not register sucessfully from backend");
-
-    })
-    .catch((err)=>console.log(err))
-    .finally(() => {
-        session.close();  
-    });
+        return res.status(500).json({ error: "User registration failed from backend" });
+       } catch (err) {
+        console.error("Error registering user:", err);
+        return res.status(500).json({ error: "Internal server error" });
+    } finally {
+        await session.close();
+    }
 }
+
+
 //contact list updation function
 async function updateContactsList(req,res){
         const mobile = String(req.body.mobile_no);
         const contacts_list = req.body.contact_list;
-        console.log(mobile);
-        console.log(contacts_list);
+        console.log("mobile:",mobile);
+        console.log("contact list:",contacts_list);
         const session = neo4jDriver.session();
        
-        session
-        .run(" MATCH (u:user{mobile_no:$mobile }) SET u.contacts = $contacts_lst",
-            {mobile:mobile,contacts_lst:contacts_list}
-        )
-        .then((result)=>{
+        try{
+            const result = await session.run(
+                " MATCH (u:user{mobile_no:$mobile }) "+
+                "SET u.contacts = $contacts_lst",
+                    {mobile:mobile,contacts_lst:contacts_list}
+                 );
+ 
             if(result !== undefined){
-                updationRelationship(mobile)
-                console.log(result);
+                console.log("Contact list updated successfully.");
+                await updateRelationship(mobile)
+                console.log("result:",result);
                 return res.status(200).json({  //res.end("user register sucessfully from backend");
                     message:"contact list updated succefully "
-                })
+                });
             }
-          return res.send(" contacts not updated sucessfully from backend");
+            return res.status(500).json({ error: "Contacts not updated successfully from backend" });
+        } catch (err) {
+            console.error("Error updating contact list:", err);
+            return res.status(500).json({ error: "Internal server error" });
+        } finally {
+            await session.close();
+        }
+    }
 
-        })
-        .catch((err)=>console.log(err))
-        .finally(() => {
-            session.close();  
-        });
-}
+
 // function for make has-contact relationship 
- async function updationRelationship(mobile){
+ async function updateRelationship(mobile){
       const session = neo4jDriver.session();
-     await session
-      .run('Match (u:user{mobile_no : $mobile}) UNWIND u.contacts AS contact_number MATCH (c:user{mobile_no:contact_number}) MERGE (u)-[:HAS_CONTACT]->(c)',
-        {mobile:mobile}
-          
-      )
-      .then((result)=>{
+      try {
+        const result = await session.run(
+            "MATCH (u:user {mobile_no : $mobile}) " +
+            "UNWIND u.contacts AS contact_number " +
+            "MATCH (c:user {mobile_no: contact_number}) " +
+            "MERGE (u)-[:HAS_CONTACT]->(c)",
+            { mobile }
+        );
+
         if(result !== undefined){
-           console.log(result);
-           return ;
+            console.log("Relationships updated successfully.");
         }
 
-    })
-    .catch((err)=>console.log(err))
-    .finally(() => {
-        session.close();  
-    });
- }
+    } catch (err) {
+        console.error("Error updating relationships:", err);
+    } finally {
+        await session.close();
+    }
+}
 
-    module.exports={ getUsers , registerUsers ,updateContactsList};
+
+ module.exports = { getUsers, registerUsers, updateContactsList };

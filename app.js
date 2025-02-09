@@ -11,9 +11,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 
-
-
-
 //mount the route
 const userRouter = require("./Routes/userRoute");
 app.use("/api/v1", userRouter);
@@ -29,3 +26,4 @@ process.on("SIGINT", async () => {
     console.log("Neo4j driver connection closed.");
     process.exit(0);
 });
+
