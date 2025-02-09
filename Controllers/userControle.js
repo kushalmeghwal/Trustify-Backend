@@ -1,10 +1,19 @@
+//import env
+require('dotenv').config();
+
 //import driver for session
 const { connectNeo4j }=require('../config/database');
 
+//import bcrypt for password hashing
+const bcrypt=require('bcrypt');
 
-// Import the Neode instance and User model from models.js
-const { neode, User } = require('../Models/userModel');
+//import jwt for token generation
+const jwt = require('jsonwebtoken');
 
+// // Import the Neode instance and User model from models.js
+// const { neode, User } = require('../Models/userModel');
+
+//connect to the database
 let neo4jDriver;
 try {
     neo4jDriver = connectNeo4j();//getting driver
@@ -22,34 +31,51 @@ async function getUsers(req,res) {
         if (!mobile || !password) {
             return res.status(400).json({ error: "Mobile and password are required" });
         }
-     
         console.log("Mobile:", mobile);
-        console.log("Password:", password);
-      
-       
         const session = neo4jDriver.session();
         try{
-        const result=await session.run(
-                "MATCH (u:user {mobile_no: $mobile, password: $password}) RETURN u",
-                { mobile: mobile, password: password }
+            //fetch user by mobile no
+            const result=await session.run(
+                "MATCH (u:user {mobile_no: $mobile}) RETURN u",
+                { mobile}
             );
-
-                if (result.records.length > 0) {
-                    const users = result.records.map((record) => {
-                        const userNode = record.get("u");
-                        return {
-                            name: userNode.properties.name,
-                            mobile:  userNode.properties.mobile,
-                            password: userNode.properties.password,
-                            email: userNode.properties.email,
-                        };
-                    });
-                   console.log("return user from backend");
-                   res.setHeader("Content-Type", "application/json");
-                    return res.status(200).json(users); 
-                } else {
-                    return res.status(404).json({ error: "User not found from backend" });
-                }
+       
+        
+            if(result.records.length===0){
+                return res.status(404).json({error:'user not found from backend'});
+            }
+            const userNode=result.records[0].get('u');
+            const hashedPassword=userNode.properties.password;
+            
+            // Compare entered password with stored hashed password
+            const passwordMatch=await bcrypt.compare(password,hashedPassword);
+            
+            if(!passwordMatch){
+                console.log('wrong password!!');
+                return res.status(401).json({error:'Invalid Password'});
+            }
+                  //generate JWT token
+                  const token = jwt.sign(
+                    {
+                        userId:userNode.identity.low,
+                        mobile:userNode.properties.mobile_no,
+                        email:userNode.properties.email
+                    },
+                    process.env.SECRET_KEY,
+                    {expiresIn:'1d'}
+                );
+             
+                  //return user data + token (without password for security)
+                  const userData={
+                    name: userNode.properties.name,
+                    mobile:  userNode.properties.mobile,
+                    email: userNode.properties.email,
+                    token
+                  };
+                  console.log("User authenticated successfully");
+                  res.setHeader("Content-Type", "application/json");
+                    return res.status(200).json(userData);
+               
             }
             catch(err) {
                 console.error("Database error:", err);
@@ -74,9 +100,30 @@ async function getUsers(req,res) {
              const session = neo4jDriver.session();
 
              try {
+                //check if user already exists
+                const existingUser=await session.run(
+                    "MATCH (u:user) WHERE u.mobile_no=$mobile RETURN u",
+                    {mobile}
+                );
+                if(existingUser.records.length>0){
+                    console.log('user already exists');
+                    return res.status(400).json({error:'user already exists'});
+                }
+
+                //secure password
+                try{
+                    hashedPassword=await bcrypt.hash(password,10);
+                }
+                catch(err){
+                    return res.status(500).json({
+                        message:'error while hashing password',
+                    });
+                }
+                console.log('hashed password:',hashedPassword);
+                //create entry in database
                 const result = await session.run(
-                    "CREATE (:user {name:$name, mobile_no:$mobile, email:$email, password:$password, contacts:[]})",
-                           { name: userName, mobile: mobile, email: email, password:password} 
+                    "CREATE (:user {name:$name, mobile_no:$mobile, email:$email, password:$hashedPassword, contacts:[]})",
+                          { name: userName, mobile: mobile, email: email, hashedPassword: hashedPassword } // Use `hashedPassword` correctly
                         );
     
         if(result !== undefined){
