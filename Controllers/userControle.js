@@ -42,7 +42,7 @@ async function getUsers(req,res) {
        
         
             if(result.records.length===0){
-                return res.status(404).json({error:'user not found from backend'});
+                return res.status(404).json({'status':false,error:'user not found from backend'});
             }
             const userNode=result.records[0].get('u');
             const hashedPassword=userNode.properties.password;
@@ -52,34 +52,33 @@ async function getUsers(req,res) {
             
             if(!passwordMatch){
                 console.log('wrong password!!');
-                return res.status(401).json({error:'Invalid Password'});
+                return res.status(401).json({'status':false,error:'Invalid Password'});
             }
                   //generate JWT token
                   const token = jwt.sign(
                     {
                         userId:userNode.identity.low,
-                        mobile:userNode.properties.mobile_no,
+                        mobile_no:userNode.properties.mobile_no,
                         email:userNode.properties.email
                     },
                     process.env.SECRET_KEY,
                     {expiresIn:'1d'}
                 );
              
-                  //return user data + token (without password for security)
-                  const userData={
-                    name: userNode.properties.name,
-                    mobile:  userNode.properties.mobile,
-                    email: userNode.properties.email,
-                    token
-                  };
+                  // const userData={
+                  //   name: userNode.properties.name,
+                  //   mobile:  userNode.properties.mobile,
+                  //   email: userNode.properties.email,
+                  //   token
+                  // };
                   console.log("User authenticated successfully");
                   res.setHeader("Content-Type", "application/json");
-                    return res.status(200).json(userData);
+                    return res.status(200).json({'status':true,'token':token});
                
             }
             catch(err) {
                 console.error("Database error:", err);
-                return res.status(500).json({ error: "Internal server error" });
+                return res.status(500).json({ 'status':false,error: "Internal server error" });
             }
             finally {
                await session.close();  
