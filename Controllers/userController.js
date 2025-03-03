@@ -1,5 +1,4 @@
-//import env
-require('dotenv').config();
+
 
 //import driver for session
 const { connectNeo4j }=require('../config/database');
@@ -10,8 +9,6 @@ const bcrypt=require('bcrypt');
 //import jwt for token generation
 const jwt = require('jsonwebtoken');
 
-// // Import the Neode instance and User model from models.js
-// const { neode, User } = require('../Models/userModel');
 
 //connect to the database
 let neo4jDriver;
@@ -36,7 +33,7 @@ async function getUsers(req,res) {
         try{
             //fetch user by mobile no
             const result=await session.run(
-                "MATCH (u:user {mobile_no: $mobile}) RETURN u",
+                "MATCH (u:User {mobile_no: $mobile}) RETURN u",
                 { mobile}
             );
        
@@ -54,23 +51,21 @@ async function getUsers(req,res) {
                 console.log('wrong password!!');
                 return res.status(401).json({'status':false,error:'Invalid Password'});
             }
+            
                   //generate JWT token
                   const token = jwt.sign(
                     {
-                        userId:userNode.identity.low,
+                        name:userNode.properties.name,
                         mobile_no:userNode.properties.mobile_no,
-                        email:userNode.properties.email
+                        email:userNode.properties.email,
+                        img_url:userNode.properties.profile_img
                     },
                     process.env.SECRET_KEY,
                     {expiresIn:'1d'}
                 );
+                console.log(userNode.properties.profile_img);
              
-                  // const userData={
-                  //   name: userNode.properties.name,
-                  //   mobile:  userNode.properties.mobile,
-                  //   email: userNode.properties.email,
-                  //   token
-                  // };
+                  
                   console.log("User authenticated successfully");
                   res.setHeader("Content-Type", "application/json");
                     return res.status(200).json({'status':true,'token':token});
@@ -90,10 +85,9 @@ async function getUsers(req,res) {
 
     async function registerUsers(req,res) {
 
-             const userName= String(req.body.userName);
-             const mobile = String(req.body.mobileNo);
-             const email= String(req.body.email);
-             const password = String(req.body.password);
+        const { userName, mobileNo: mobile, email, password, img_url } = req.body;
+
+
 
              console.log("Received user details:", userName, mobile, email);
              const session = neo4jDriver.session();
@@ -101,7 +95,7 @@ async function getUsers(req,res) {
              try {
                 //check if user already exists
                 const existingUser=await session.run(
-                    "MATCH (u:user) WHERE u.mobile_no=$mobile RETURN u",
+                    "MATCH (u:User) WHERE u.mobile_no=$mobile RETURN u",
                     {mobile}
                 );
                 if(existingUser.records.length>0){
@@ -109,7 +103,7 @@ async function getUsers(req,res) {
                     return res.status(400).json({error:'user already exists'});
                 }
 
-                //secure password
+                //Hashing the password
                 try{
                     hashedPassword=await bcrypt.hash(password,10);
                 }
@@ -119,15 +113,15 @@ async function getUsers(req,res) {
                     });
                 }
                 console.log('hashed password:',hashedPassword);
-                //create entry in database
+                //register user
                 const result = await session.run(
-                    "CREATE (:user {name:$name, mobile_no:$mobile, email:$email, password:$hashedPassword, contacts:[]})",
-                          { name: userName, mobile: mobile, email: email, hashedPassword: hashedPassword } // Use `hashedPassword` correctly
+                    "CREATE (:User{uid:apoc.create.uuid(),name:$name, mobile_no:$mobile, email:$email, password:$hashedPassword,profile_img:$img_url, contacts:[]})",
+                          { name: userName, mobile: mobile, email: email, hashedPassword: hashedPassword ,img_url:img_url} 
                         );
     
         if(result !== undefined){
             console.log("User registered successfully.");
-            return res.status(200).json({  //res.end("user register sucessfully from backend");
+            return res.status(200).json({  
                 message:"user register sucessfully from backend"
             });
         }
@@ -143,15 +137,14 @@ async function getUsers(req,res) {
 
 //contact list updation function
 async function updateContactsList(req,res){
-        const mobile = String(req.body.mobile_no);
-        const contacts_list = req.body.contact_list;
+    const {mobile,contacts_list} = req.body;
         console.log("mobile:",mobile);
         console.log("contact list:",contacts_list);
         const session = neo4jDriver.session();
        
         try{
             const result = await session.run(
-                " MATCH (u:user{mobile_no:$mobile }) "+
+                " MATCH (u:User{mobile_no:$mobile }) "+
                 "SET u.contacts = $contacts_lst",
                     {mobile:mobile,contacts_lst:contacts_list}
                  );
@@ -160,7 +153,7 @@ async function updateContactsList(req,res){
                 console.log("Contact list updated successfully.");
                 await updateRelationship(mobile)
                 console.log("result:",result);
-                return res.status(200).json({  //res.end("user register sucessfully from backend");
+                return res.status(200).json({ 
                     message:"contact list updated succefully "
                 });
             }
@@ -179,9 +172,9 @@ async function updateContactsList(req,res){
       const session = neo4jDriver.session();
       try {
         const result = await session.run(
-            "MATCH (u:user {mobile_no : $mobile}) " +
+            "MATCH (u:User {mobile_no : $mobile}) " +
             "UNWIND u.contacts AS contact_number " +
-            "MATCH (c:user {mobile_no: contact_number}) " +
+            "MATCH (c:User {mobile_no: contact_number}) " +
             "MERGE (u)-[:HAS_CONTACT]->(c)",
             { mobile }
         );
