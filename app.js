@@ -16,7 +16,7 @@ const userRouter = require("./Routes/userRoute");
 const productRouter = require("./Routes/productRoute")
 
 app.use("/api/v1", userRouter);
-app.use("api/v1/product",productRouter);
+app.use("/api/v1/product",productRouter);
 
 //start the server
 app.listen(PORT, () => {

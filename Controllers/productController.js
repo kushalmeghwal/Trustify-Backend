@@ -9,10 +9,11 @@ try{
 }
 //add product
  const addProductCar = async(req,res)=>{
+    console.log("req received");
     let session;
     try{
-        const{brand,year_of_purchase,fule_type,transmission,km_driven,owner,p_title,p_description,price,p_img}= req.body;
-        if(!brand||!year_of_purchase||!fule_type||!transmission||!km_driven||!p_title||!price||!owner||!p_img){
+        const{brand,year_of_purchase,fule_type,transmission,km_driven,owner,p_title,p_description,price,img_urls}= req.body;
+        if(!brand||!year_of_purchase||!fule_type||!transmission||!km_driven||!p_title||!price||!owner||!img_urls){
             return res.status(400).json({error:'fill requeired(* marked) fields'});
         }
         session = neo4jDriver.session();
@@ -28,7 +29,7 @@ try{
             price:$price,
             p_title:$p_title,
             p_description:$p_description,
-            p_img:$p_img,
+            p_img:$img_urls,
             date_added:date()}
             ) RETURN p`;
         const result =  await session.run(query,{
@@ -41,7 +42,7 @@ try{
             price,
             p_title,
             p_description,
-            p_img
+            img_urls
         })
         const product =  result.records[0].get('p').properties;
         console.log(product);
@@ -51,8 +52,8 @@ try{
         res.status(500).json({error:'internal server error please try again'})
 
     }finally{
-        await session.close();
-        await neo4jDriver.close();
+        //await session.close();
+       // await neo4jDriver.close();
       }
 }
 //get product
