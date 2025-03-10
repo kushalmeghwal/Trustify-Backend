@@ -25,8 +25,16 @@ app.listen(PORT, () => {
 
 // Ensure driver is closed on process exit
 process.on("SIGINT", async () => {
-  //  await neo4jDriver.close();
+    await neo4jDriver.close();
     console.log("Neo4j driver connection closed.");
     process.exit(0);
 });
+//cors-This allows your backend to handle requests from different origins (such as your Flutter app).
+const cors = require("cors");
+app.use(cors({
+  origin: [
+    "http://10.0.2.2:3000", // Local development (Android emulator)
+    "https://trustify-backend.onrender.com" // Deployed backend
+  ],
+}));
 
