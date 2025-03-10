@@ -52,8 +52,8 @@ try{
         res.status(500).json({error:'internal server error please try again'})
 
     }finally{
-        //await session.close();
-       // await neo4jDriver.close();
+        await session.close();
+       await neo4jDriver.close();
       }
 }
 //get product
