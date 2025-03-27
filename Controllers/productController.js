@@ -31,13 +31,6 @@ const addProductCar = async (req, res) => {
                 return res.status(400).json({ error: 'fill requeired(* marked) fields' });
             }
         }
-
-        // const { brand, year, fuel_type, transmission, km_driven, owner, ad_title, additional_information, price, img_urls } = req.body;
-        // console.log(req.body);
-        // if (!brand || !year || !fuel_type || !transmission || !km_driven || !ad_title || !price || !owner || !img_urls) {
-        //     console.log("something is missing");
-        //     return res.status(400).json({ error: 'fill requeired(* marked) fields' });
-        // }
         session = neo4jDriver.session();
         const query = pQuery[category];
         const result = await session.run(query, pData)
