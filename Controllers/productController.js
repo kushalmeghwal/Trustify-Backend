@@ -45,6 +45,7 @@ const addProductCar = async (req, res) => {
         //await session.close();
         // await neo4jDriver.close();
     }
+
 }
 //get product
 const getProduct = async (req, res) => {
