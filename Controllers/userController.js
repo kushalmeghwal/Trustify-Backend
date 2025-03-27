@@ -115,7 +115,7 @@ async function getUsers(req,res) {
                 console.log('hashed password:',hashedPassword);
                 //register user
                 const result = await session.run(
-                    "CREATE (:User{uid:apoc.create.uuid(),name:$name, mobile_no:$mobile, email:$email, password:$hashedPassword,profile_img:$img_url, contacts:[]})",
+                    "CREATE (:User{uid:apoc.create.uuid(),name:$name, mobile_no:$mobile, email:$email, password:$hashedPassword,profile_img:$img_url, location:'India',trust_score:2, contacts:[]})",
                           { name: userName, mobile: mobile, email: email, hashedPassword: hashedPassword ,img_url:img_url} 
                         );
     
@@ -137,21 +137,21 @@ async function getUsers(req,res) {
 
 //contact list updation function
 async function updateContactsList(req,res){
-    const {mobile,contacts_list} = req.body;
-        console.log("mobile:",mobile);
+    const {mobile_no,contacts_list} = req.body;
+        console.log("mobile:",mobile_no);
         console.log("contact list:",contacts_list);
         const session = neo4jDriver.session();
        
         try{
             const result = await session.run(
-                " MATCH (u:User{mobile_no:$mobile }) "+
+                " MATCH (u:User{mobile_no:$mobile_no }) "+
                 "SET u.contacts = $contacts_lst",
-                    {mobile:mobile,contacts_lst:contacts_list}
+                    {mobile_no:mobile_no,contacts_lst:contacts_list}
                  );
  
             if(result !== undefined){
                 console.log("Contact list updated successfully.");
-                await updateRelationship(mobile)
+                await updateRelationship(mobile_no)
                 console.log("result:",result);
                 return res.status(200).json({ 
                     message:"contact list updated succefully "
@@ -172,12 +172,17 @@ async function updateContactsList(req,res){
       const session = neo4jDriver.session();
       try {
         const result = await session.run(
-            "MATCH (u:User {mobile_no : $mobile}) " +
+            "MATCH (u:User {mobile_no: $mobile}) " +
             "UNWIND u.contacts AS contact_number " +
             "MATCH (c:User {mobile_no: contact_number}) " +
-            "MERGE (u)-[:HAS_CONTACT]->(c)",
+            "MERGE (u)-[:HAS_CONTACT]->(c) " +  
+            "WITH u, c " +  
+            "WHERE u.mobile_no IN c.contacts " + 
+            "MERGE (c)-[:HAS_CONTACT]->(u) " +
+            "RETURN u, c",  
             { mobile }
-        );
+          );
+          
 
         if(result !== undefined){
             console.log("Relationships updated successfully.");
