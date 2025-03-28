@@ -1,29 +1,19 @@
 
 
 //import driver for session
-const { connectNeo4j }=require('../config/database');
+import { neo4jDriver } from "../config/database.js"; // Use the shared driver
 
 //import bcrypt for password hashing
-const bcrypt=require('bcrypt');
+import bcrypt from 'bcrypt';
 
 //import jwt for token generation
-const jwt = require('jsonwebtoken');
+import jwt from 'jsonwebtoken';
+const { sign } = jwt;
 
 
-//connect to the database
-let neo4jDriver;
-try {
-    neo4jDriver = connectNeo4j();//getting driver
-} catch (error) {
-    console.error("Failed to connect to the Neo4j database:", error.message);
-    process.exit(1); // Exit the process if the database connection fails
-}
-
-
-
-//actual functions
-async function getUsers(req,res) {
-        const { mobile, password } = req.query;
+//login user 
+async function loginUser(req,res) {
+        const { mobile, password } = req.body;
     
         if (!mobile || !password) {
             return res.status(400).json({ error: "Mobile and password are required" });
@@ -53,7 +43,7 @@ async function getUsers(req,res) {
             }
             
                   //generate JWT token
-                  const token = jwt.sign(
+                  const token = sign(
                     {
                         name:userNode.properties.name,
                         mobile_no:userNode.properties.mobile_no,
@@ -81,15 +71,15 @@ async function getUsers(req,res) {
     }
 
 
-//post function
+//register function
 
-    async function registerUsers(req,res) {
+    async function registerUser(req,res) {
 
         const { userName, mobileNo: mobile, email, password, img_url } = req.body;
 
 
 
-             console.log("Received user details:", userName, mobile, email);
+             console.log("Received user details:", userName, mobile, email,password);
              const session = neo4jDriver.session();
 
              try {
@@ -104,6 +94,7 @@ async function getUsers(req,res) {
                 }
 
                 //Hashing the password
+                let hashedPassword;
                 try{
                     hashedPassword=await bcrypt.hash(password,10);
                 }
@@ -141,17 +132,21 @@ async function updateContactsList(req,res){
         console.log("mobile:",mobile_no);
         console.log("contact list:",contacts_list);
         const session = neo4jDriver.session();
-       
+        
         try{
+            const contactsArray = Array.isArray(contacts_list) ? contacts_list : [];
             const result = await session.run(
                 " MATCH (u:User{mobile_no:$mobile_no }) "+
                 "SET u.contacts = $contacts_lst",
-                    {mobile_no:mobile_no,contacts_lst:contacts_list}
+                    {mobile_no:mobile_no,contacts_lst:contactsArray}
                  );
  
             if(result !== undefined){
                 console.log("Contact list updated successfully.");
-                await updateRelationship(mobile_no)
+                if (contactsArray.length > 0) {
+                    await updateRelationship(mobile_no);
+                }
+           
                 console.log("result:",result);
                 return res.status(200).json({ 
                     message:"contact list updated succefully "
@@ -196,4 +191,5 @@ async function updateContactsList(req,res){
 }
 
 
- module.exports = { getUsers, registerUsers, updateContactsList };
+ export { loginUser, registerUser, updateContactsList };
+ 
