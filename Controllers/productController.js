@@ -58,14 +58,20 @@ const getProduct = async (req, res) => {
     try {
         session = neo4jDriver.session();
         const query = `
-        MATCH (u:User {mobile_no:$mobile_no})
-        MATCH (u)-[:HAS_CONTACT]->(contacts)
-        MATCH (contacts)-[:HAS_CONTACT]->(u) 
-        MATCH (contacts)-[:LISTED]->(p1:Product)
-        MATCH (u)-[:HAS_VERIFIED]->(p2:Product)
-        RETURN contacts.name AS ContactName, 
-        contacts.mobile_no AS ContactMobile,
-        COLLECT(DISTINCT p1) + COLLECT(DISTINCT p2) AS Products;
+       MATCH (u:User {mobile_no: $mobile_no})
+       MATCH (u)-[:HAS_CONTACT]->(contacts)
+       MATCH (contacts)-[:HAS_CONTACT]->(u) 
+       OPTIONAL MATCH (contacts)-[:LISTED]->(p1:Product)
+       OPTIONAL MATCH (u)-[:HAS_VERIFIED]->(p2:Product)
+       WITH contacts, 
+       contacts.name AS ContactName, 
+       contacts.mobile_no AS ContactMobile, 
+       COLLECT(DISTINCT p1) AS Products1, 
+       COLLECT(DISTINCT p2) AS Products2
+       RETURN ContactName, 
+            ContactMobile, 
+            apoc.coll.union(coalesce(Products1, []), coalesce(Products2, [])) AS Products;
+
      `;
         const result = await session.run(query, { mobile_no });
         const data = result.records.map(record => ({
