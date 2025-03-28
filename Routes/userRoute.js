@@ -1,9 +1,11 @@
-const express = require("express");
-const router = express.Router();
-const { getUsers, registerUsers,updateContactsList } = require("../Controllers/userController");
+import { Router } from "express";
+const router = Router();
 
-router.get("/login", getUsers);
-router.post("/registerUser", registerUsers);
-router.post("/updateContactList", updateContactsList);
+import { loginUser, registerUser, updateContactsList } from '../Controllers/userController.js';
+import { isAuthenticated } from "../Middlewares/auth.js";
 
-module.exports = router;
+router.post("/login", loginUser);
+router.post("/register", registerUser);
+router.post("/updateContactList",isAuthenticated, updateContactsList);
+
+export default router;

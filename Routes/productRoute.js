@@ -1,8 +1,9 @@
-const express = require("express");
-const router = express.Router();
-const { getProduct, addProductCar } = require("../Controllers/productController");
+import { Router } from "express";
+const router = Router();
+import { getProduct, addProductCar } from "../Controllers/productController.js";
+import { isAuthenticated } from "../Middlewares/auth.js";
 
-router.get("/getProducts", getProduct);
-router.post("/addProduct", addProductCar);
+router.get("/getProducts",isAuthenticated, getProduct);
+router.post("/addProduct",isAuthenticated, addProductCar);
 
-module.exports = router;
+export default router;
