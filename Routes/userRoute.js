@@ -6,6 +6,6 @@ import { isAuthenticated } from "../Middlewares/auth.js";
 
 router.post("/login", loginUser);
 router.post("/register", registerUser);
-router.post("/updateContactList",isAuthenticated, updateContactsList);
+router.post("/updateContactList",updateContactsList);
 
 export default router;

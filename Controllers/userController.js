@@ -106,14 +106,17 @@ async function loginUser(req,res) {
                 console.log('hashed password:',hashedPassword);
                 //register user
                 const result = await session.run(
-                    "CREATE (:User{uid:apoc.create.uuid(),name:$name, mobile_no:$mobile, email:$email, password:$hashedPassword,profile_img:$img_url, location:'India',trust_score:2, contacts:[]})",
+                    "CREATE (u:User{uid:apoc.create.uuid(),name:$name, mobile_no:$mobile, email:$email, password:$hashedPassword,profile_img:$img_url, location:'India',trust_score:2, contacts:[]})"+
+                    "RETURN u",
                           { name: userName, mobile: mobile, email: email, hashedPassword: hashedPassword ,img_url:img_url} 
                         );
     
-        if(result !== undefined){
-            console.log("User registered successfully.");
+        if (result.records.length > 0) { 
+             const createdUser = result.records[0].get("u").properties;
+            console.log("User registered successfully:", createdUser);
             return res.status(200).json({  
-                message:"user register sucessfully from backend"
+                message:"user register sucessfully from backend",
+                user: createdUser 
             });
         }
         return res.status(500).json({ error: "User registration failed from backend" });
@@ -137,8 +140,8 @@ async function updateContactsList(req,res){
             const contactsArray = Array.isArray(contacts_list) ? contacts_list : [];
             const result = await session.run(
                 " MATCH (u:User{mobile_no:$mobile_no }) "+
-                "SET u.contacts = $contacts_lst",
-                    {mobile_no:mobile_no,contacts_lst:contactsArray}
+                "SET u.contacts = $contacts_list",
+                    {mobile_no,contacts_list:contactsArray}
                  );
  
             if(result !== undefined){
