@@ -11,7 +11,7 @@ const categoryAttributes = {
   Furniture: ["furnitureType", "material","condition"]
 };
 
-export default {
+module.exports = {
   generalAttributes,
   categoryAttributes
 };
