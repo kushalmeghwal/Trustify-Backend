@@ -1,6 +1,10 @@
+
 import { connectNeo4j } from '../config/database.js';
+
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+
+
 
 let neo4jDriver;
 try {
@@ -30,6 +34,7 @@ export async function loginUsers(req, res) {
         const userNode = result.records[0].get('u');
         const hashedPassword = userNode.properties.password;
 
+
         const passwordMatch = await bcrypt.compare(password, hashedPassword);
         if (!passwordMatch) {
             return res.status(401).json({ status: false, error: 'Invalid Password' });
@@ -48,6 +53,7 @@ export async function loginUsers(req, res) {
         return res.status(500).json({ status: false, error: "Internal server error" });
     } finally {
         await session.close();
+
     }
 }
 
