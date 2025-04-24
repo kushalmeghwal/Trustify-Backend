@@ -1,17 +1,13 @@
 
 
-//import driver for session
 import { neo4jDriver } from "../config/database.js"; // Use the shared driver
 
-//import bcrypt for password hashing
 import bcrypt from 'bcrypt';
 
-//import jwt for token generation
 import jwt from 'jsonwebtoken';
 const { sign } = jwt;
 
 
-//connect to the database
 let neo4jDriver;
 try {
     neo4jDriver = connectNeo4j();//getting driver
@@ -22,8 +18,7 @@ try {
 
 
 
-//actual functions
-async function getUsers(req,res) {
+async function loginUser(req,res) {
         const { mobileNo, password } = req.body;
     
         if (!mobileNo || !password) {
@@ -53,7 +48,6 @@ async function getUsers(req,res) {
                 return res.status(401).json({'status':false,error:'Invalid Password'});
             }
             
-                  //generate JWT token
                   const token = sign(
                     {
                         name:userNode.properties.name,

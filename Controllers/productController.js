@@ -1,6 +1,6 @@
-const { connectNeo4j } = require('../config/database');
-const pQuery = require('../Models/productQuery');
-const {generalAttributes,  categoryAttributes} = require('../Models/productAttribute');
+import { connectNeo4j } from '../config/database';
+import pQuery from '../Models/productQuery';
+import { generalAttributes, categoryAttributes } from '../Models/productAttribute';
 let neo4jDriver;
 try {
     neo4jDriver = connectNeo4j();
@@ -128,4 +128,4 @@ const getProduct = async (req, res) => {
         // await session.close();
     }
 }
-module.exports = { getProduct, addProduct };
+export default { getProduct, addProduct };
