@@ -87,4 +87,44 @@ const getProduct = async (req, res) => {
         await session.close();
     }
 }
-export { getProduct, addProductCar };
+
+
+const verifyProduct=async (req, res) =>{
+    const { mobile_no } = req.body;  
+    //find out where to get product id
+    const { p_id } = req.params;     
+
+    if (!mobile_no || !p_id) {
+        return res.status(400).json({ error: "Missing required parameters" });
+    }
+
+    const session = neo4jDriver.session();
+    try {
+        // Step 1: Build 'VERIFIED_BY' relationship (A -> P)
+        await session.run(
+            "MATCH (a:User {mobile_no: $mobile_no}), (p:Product {id: $p_id}) " +
+            "MERGE (a)-[:VERIFIED_BY]->(p)"+
+            "RETURN a,p",
+            { mobile_no, p_id }
+        );
+
+        // Step 2: Find all users in bidirectional 'HAS_CONTACT' relationship with A
+        const result = await session.run(
+            "MATCH (a:User {mobile_no: $mobile_no})-[:HAS_CONTACT]-(u:User) " +
+            "MATCH (p:Product {id: $p_id})<-[:IS_LISTED]-(owner:User) " +
+            "WHERE u <> owner " +  // Exclude the product owner
+            "MERGE (u)-[:CAN_SEE]->(p)",
+            { mobile_no, p_id }
+        );
+
+        return res.status(200).json({ message: "Product verified successfully" });
+
+    } catch (error) {
+        console.error("Error verifying product:", error);
+        return res.status(500).json({ error: "Internal server error" });
+    } finally {
+        await session.close();
+    }
+}
+
+export { getProduct, addProductCar,verifyProduct };
