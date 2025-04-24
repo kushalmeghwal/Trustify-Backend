@@ -1,15 +1,8 @@
 
-import { connectNeo4j } from '../config/database.js';
+import  neo4jDriver  from '../config/database.js';
 import pQuery from '../Models/productQuery.js';
 import { generalAttributes, categoryAttributes } from '../Models/productAttribute.js';
 
-let neo4jDriver;
-try {
-    neo4jDriver = connectNeo4j();
-} catch (error) {
-    console.error("Failed to connect Neo4j");
-    process.exit(1);
-}
 
 function prepareProductData(req, category) {
     const queryParams = {};

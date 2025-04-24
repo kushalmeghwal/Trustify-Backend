@@ -10,8 +10,8 @@ if (!uri || !user || !password) {
     throw new Error("Neo4j database connection details are missing in environment variables.");
 }
 
-// Create a single shared instance of the driver
+
 const neo4jDriver = _driver(uri, auth.basic(user, password));
 console.log("Connected to Neo4j database successfully");
 
-export default neo4jDriver ; // Export the shared instance
+export default neo4jDriver ; 
