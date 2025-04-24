@@ -20,5 +20,7 @@ MERGE (u)-[r:LISTED]->(p)
 SET r.isSold = false
 RETURN p
 `;
+
 export default querie;
+
 

@@ -11,4 +11,3 @@ export const categoryAttributes = {
   Furniture: ["furnitureType", "material","condition"]
 };
 
-
