@@ -1,90 +1,131 @@
+const { connectNeo4j } = require('../config/database');
+const pQuery = require('../Models/productQuery');
+const {generalAttributes,  categoryAttributes} = require('../Models/productAttribute');
+let neo4jDriver;
+try {
+    neo4jDriver = connectNeo4j();
+} catch (error) {
+    console.error("falied to connect neo4j");
+    process.exit(1);
+}
+function prepareProductData(req, category) {
+    const queryParams = {};
+    const details = {};
 
-import { neo4jDriver } from "../config/database.js"; // Use the shared driver
+    generalAttributes.forEach(field => {
+        if (req.body[field] !== undefined) {
+            queryParams[field] = req.body[field];
+        }
+    });
 
-import {pQuery} from '../Models/productQueryModel.js';
-import {pSchema} from '../Models/productAttributeModel.js';
+    categoryAttributes[category].forEach(field => {
+        if (req.body[field] !== undefined) {
+            details[field] = req.body[field];
+        }
+    });
 
-//add product
-const addProductCar = async (req, res) => {
-    console.log("req received",req.body);
+    queryParams.details = JSON.stringify(details);
+
+    return queryParams;
+}
+
+function validateProductData(req, category) {
+    const missingFields = [];
+
+    generalAttributes.forEach(field => {
+        if (req.body[field] === undefined) {
+            console.log(`missing field ${field}`)
+            missingFields.push(field);
+        }
+    });
+
+    categoryAttributes[category].forEach(field => {
+        if (req.body[field] === undefined) {
+            missingFields.push(field);
+        }
+    });
+
+    if (missingFields.length > 0) {
+        return { isValid: false, missingFields };
+    }
+
+    return { isValid: true };
+}
+
+const addProduct = async (req, res) => {
     let session;
     try {
-        const { category }=req.body;
-        if (!pSchema[category]) {
+        const { subCategory } = req.body;
+        if (!categoryAttributes[subCategory]) {
             return res.status(400).json({ error: "Invalid category" });
         }
 
-        const allowedAttributes = pSchema[category];
-        let pData = {};
+        const validation = validateProductData(req, subCategory);
 
-        for (let key of allowedAttributes) {
-            if (req.body[key] !== undefined) {
-                pData[key] = req.body[key];
-            }else{
-                console.log("something is missing");
-                return res.status(400).json({ error: 'fill requeired(* marked) fields' });
-            }
+        if (!validation.isValid) {
+
+            return res.status(400).json({
+                error: `Missing required fields: ${validation.missingFields.join(', ')}`
+            });
         }
-        
-       // const { brand, year, fuel_type, transmission, km_driven, owner, ad_title, additional_information, price, img_urls } = req.body;
-        // console.log(req.body);
-        // if (!brand || !year || !fuel_type || !transmission || !km_driven || !ad_title || !price || !owner || !img_urls) {
-        //     console.log("something is missing");
-        //     return res.status(400).json({ error: 'fill requeired(* marked) fields' });
-        // }
+
+        const queryParams = prepareProductData(req, subCategory);
+
         session = neo4jDriver.session();
-        const query = pQuery[category];
-        const result = await session.run(query,pData)
+        const query = pQuery;
+        const result = await session.run(query, queryParams);
+        console.log(result)
         const product = result.records[0].get('p').properties;
-        console.log(product);
+
         res.status(201).json({ success: true, product });
     } catch (error) {
-        console.error('error while adding product ', error);
-        res.status(500).json({ error: 'internal server error please try again' })
-
+        console.error('Error while adding product: ', error);
+        res.status(500).json({ error: 'Internal server error, please try again' });
     } finally {
-        await session.close();
+        if (session) {
+            await session.close();
+        }
     }
-}
+};
 //get product
 const getProduct = async (req, res) => {
     console.log("req received");
 
-    const { mobile_no } = req.query;
-    console.log(mobile_no);
+    const { mobileNo } = req.query;
+    console.log(mobileNo);
     let session;
-    //with optional (u)-[:has-verified]->(p);
     try {
         session = neo4jDriver.session();
         const query = `
-        MATCH (u:User {mobile_no: $mobile_no})
-        MATCH (u)-[:HAS_CONTACT]->(contacts)
-        MATCH (contacts)-[:HAS_CONTACT]->(u) 
-        OPTIONAL MATCH (contacts)-[:LISTED]->(p1:Product)
-        OPTIONAL MATCH (u)-[:HAS_VERIFIED]->(p2:Product)
-        WITH contacts, 
-        contacts.name AS ContactName, 
-        contacts.mobile_no AS ContactMobile, 
-        COLLECT(DISTINCT p1) AS Products1, 
-        COLLECT(DISTINCT p2) AS Products2
-        RETURN ContactName, 
-             ContactMobile, 
-             apoc.coll.union(coalesce(Products1, []), coalesce(Products2, [])) AS Products;
- 
-      `;
-        const result = await session.run(query, { mobile_no });
+       MATCH (u:User {mobileNo: $mobileNo})
+       MATCH (u)-[:HAS_CONTACT]->(contacts)
+       MATCH (contacts)-[:HAS_CONTACT]->(u) 
+       OPTIONAL MATCH (contacts)-[:LISTED]->(p1:Product)
+       OPTIONAL MATCH (contacts)-[:HAS_VERIFIED]->(p2:Product)
+       WITH contacts, 
+       contacts.name AS ContactName, 
+       contacts.mobileNo AS ContactMobile, 
+       COLLECT(DISTINCT p1) AS Products1, 
+       COLLECT(DISTINCT p2) AS Products2
+       RETURN ContactName, 
+            ContactMobile, 
+            apoc.coll.union(coalesce(Products1, []), coalesce(Products2, [])) AS Products;
+
+     `;
+        const result = await session.run(query, { mobileNo });
         const data = result.records.map(record => ({
             contactName: record.get("ContactName"),
             contactMobile: record.get("ContactMobile"),
             products: record.get("Products") // This will be an array of product nodes
         }));
-        console.log(data)
+        console.log(data);
+
         res.status(200).json({ success: true, data });
     } catch (error) {
         console.error('Error retrieving products:', error);
         res.status(500).json({ error: 'Internal server error' });
     } finally {
-        await session.close();
+        // await session.close();
     }
 }
-export { getProduct, addProductCar };
+module.exports = { getProduct, addProduct };
