@@ -27,7 +27,7 @@ app.listen(PORT, () => {
     console.log(`Server is successfully running on port ${PORT}`);
 });
 //import neo4j driver
-import { neo4jDriver } from "./config/database.js";
+import  neo4jDriver from "./config/database.js";
 // Ensure driver is closed on process exit
 process.on("SIGINT", async () => {
   await neo4jDriver.close();

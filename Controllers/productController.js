@@ -1,13 +1,6 @@
-import { connectNeo4j } from '../config/database';
-import pQuery from '../Models/productQuery';
-import { generalAttributes, categoryAttributes } from '../Models/productAttribute';
-let neo4jDriver;
-try {
-    neo4jDriver = connectNeo4j();
-} catch (error) {
-    console.error("falied to connect neo4j");
-    process.exit(1);
-}
+import neo4jDriver  from '../config/database.js';
+import pQuery from '../Models/productQuery.js';
+import { generalAttributes, categoryAttributes } from '../Models/productAttribute.js';
 function prepareProductData(req, category) {
     const queryParams = {};
     const details = {};
@@ -52,7 +45,7 @@ function validateProductData(req, category) {
     return { isValid: true };
 }
 
-const addProduct = async (req, res) => {
+export const addProduct = async (req, res) => {
     let session;
     try {
         const { subCategory } = req.body;
@@ -88,7 +81,7 @@ const addProduct = async (req, res) => {
     }
 };
 //get product
-const getProduct = async (req, res) => {
+export const getProduct = async (req, res) => {
     console.log("req received");
 
     const { mobileNo } = req.query;
@@ -128,4 +121,3 @@ const getProduct = async (req, res) => {
         // await session.close();
     }
 }
-export default { getProduct, addProduct };

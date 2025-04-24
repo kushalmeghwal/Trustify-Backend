@@ -1,7 +1,7 @@
 
 const querie=
 `CALL apoc.create.node(
-  ['Product',$lable], 
+  ['Product',$label], 
   {
     id: apoc.create.uuid(),
     subCategory: $subCategory,

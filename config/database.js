@@ -11,7 +11,14 @@ if (!uri || !user || !password) {
 }
 
 // Create a single shared instance of the driver
-const neo4jDriver = _driver(uri, auth.basic(user, password));
-console.log("Connected to Neo4j database successfully");
 
-export { neo4jDriver }; // Export the shared instance
+
+let neo4jDriver;
+try {
+    neo4jDriver = _driver(uri, auth.basic(user, password));
+    console.log("Connected to Neo4j database successfully");
+ } catch (error) {
+     console.error("falied to connect neo4j");
+     process.exit(1);
+ }
+export default neo4jDriver ; // Export the shared instance

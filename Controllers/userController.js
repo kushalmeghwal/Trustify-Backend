@@ -1,6 +1,6 @@
 
 
-import { neo4jDriver } from "../config/database.js"; // Use the shared driver
+import  neo4jDriver  from "../config/database.js"; // Use the shared driver
 
 import bcrypt from 'bcrypt';
 
@@ -8,17 +8,11 @@ import jwt from 'jsonwebtoken';
 const { sign } = jwt;
 
 
-let neo4jDriver;
-try {
-    neo4jDriver = connectNeo4j();//getting driver
-} catch (error) {
-    console.error("Failed to connect to the Neo4j database:", error.message);
-    process.exit(1); // Exit the process if the database connection fails
-}
 
 
 
-async function loginUser(req,res) {
+
+export async function loginUser(req,res) {
         const { mobileNo, password } = req.body;
     
         if (!mobileNo || !password) {
@@ -77,7 +71,7 @@ async function loginUser(req,res) {
 
 //register function
 
-    async function registerUser(req,res) {
+   export async function registerUser(req,res) {
 
         const { name, mobileNo, email, password, profileImg } = req.body;
 
@@ -130,7 +124,7 @@ async function loginUser(req,res) {
 
 
 //contact list updation function
-async function updateContactsList(req,res){
+export async function updateContactsList(req,res){
     const {mobileNo,contacts} = req.body;
         console.log("mobile:",mobileNo);
         console.log("contact list:",contacts);
@@ -163,7 +157,7 @@ async function updateContactsList(req,res){
 
 
 // function for make has-contact relationship 
- async function updateRelationship(mobileNo){
+  async function updateRelationship(mobileNo){
       const session = neo4jDriver.session();
       try {
         const result = await session.run(
@@ -191,5 +185,4 @@ async function updateContactsList(req,res){
 }
 
 
- export { loginUser, registerUser, updateContactsList };
  
