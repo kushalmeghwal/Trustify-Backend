@@ -23,7 +23,6 @@ export async function loginUsers(req, res) {
             "MATCH (u:User {mobileNo: $mobileNo}) RETURN u",
             { mobileNo }
         );
-
         if (result.records.length === 0) {
             return res.status(404).json({ status: false, error: 'user not found from backend' });
         }
