@@ -1,13 +1,14 @@
 
 
 //import driver for session
-const { connectNeo4j }=require('../config/database');
+import { neo4jDriver } from "../config/database.js"; // Use the shared driver
 
 //import bcrypt for password hashing
-const bcrypt=require('bcrypt');
+import bcrypt from 'bcrypt';
 
 //import jwt for token generation
-const jwt = require('jsonwebtoken');
+import jwt from 'jsonwebtoken';
+const { sign } = jwt;
 
 
 //connect to the database
@@ -53,7 +54,7 @@ async function getUsers(req,res) {
             }
             
                   //generate JWT token
-                  const token = jwt.sign(
+                  const token = sign(
                     {
                         name:userNode.properties.name,
                         mobileNo:userNode.properties.mobileNo,
@@ -80,9 +81,9 @@ async function getUsers(req,res) {
     }
 
 
-//post function
+//register function
 
-    async function registerUsers(req,res) {
+    async function registerUser(req,res) {
 
         const { name, mobileNo, email, password, profileImg } = req.body;
 
@@ -102,6 +103,7 @@ async function getUsers(req,res) {
                 }
 
                 //Hashing the password
+                let hashedPassword;
                 try{
                     hashedPassword=await bcrypt.hash(password,10);
                 }
@@ -115,10 +117,12 @@ async function getUsers(req,res) {
                           {name, mobileNo, email, hashedPassword ,profileImg} 
                         );
     
-        if(result !== undefined){
-            console.log("User registered successfully.");
+        if (result.records.length > 0) { 
+             const createdUser = result.records[0].get("u").properties;
+            console.log("User registered successfully:", createdUser);
             return res.status(200).json({  
-                message:"user register sucessfully from backend"
+                message:"user register sucessfully from backend",
+                user: createdUser 
             });
         }
         return res.status(500).json({ error: "User registration failed from backend" });
@@ -137,8 +141,9 @@ async function updateContactsList(req,res){
         console.log("mobile:",mobileNo);
         console.log("contact list:",contacts);
         const session = neo4jDriver.session();
-       
+        
         try{
+            const contactsArray = Array.isArray(contacts_list) ? contacts_list : [];
             const result = await session.run(
                 " MATCH (u:User{mobileNo:$mobileNo }) "+
                 "SET u.contacts = $contacts",
@@ -192,4 +197,5 @@ async function updateContactsList(req,res){
 }
 
 
- module.exports = { getUsers, registerUsers, updateContactsList };
+ export { loginUser, registerUser, updateContactsList };
+ 
