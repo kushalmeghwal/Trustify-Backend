@@ -19,6 +19,7 @@ try {
 
 
 async function loginUser(req,res) {
+
         const { mobileNo, password } = req.body;
     
         if (!mobileNo || !password) {

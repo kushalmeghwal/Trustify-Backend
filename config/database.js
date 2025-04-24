@@ -14,4 +14,4 @@ if (!uri || !user || !password) {
 const neo4jDriver = _driver(uri, auth.basic(user, password));
 console.log("Connected to Neo4j database successfully");
 
-export { neo4jDriver }; // Export the shared instance
+export default neo4jDriver ; // Export the shared instance
