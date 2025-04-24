@@ -1,10 +1,8 @@
-import { Router } from "express";
-const router = Router();
-import { getProduct, addProductCar, verifyProduct } from "../Controllers/productController.js";
-import { isAuthenticated } from "../Middlewares/auth.js";
+const express = require("express");
+const router = express.Router();
+const { getProduct, addProduct } = require("../Controllers/productController");
 
 router.get("/getProducts", getProduct);
-router.post("/addProduct", addProductCar);
-router.post("/product/:p_id/verify",verifyProduct);//not sure about route
+router.post("/addProduct", addProduct);
 
 export default router;
