@@ -21,7 +21,7 @@ app.get('/',(req,res)=>{
 })
 
 //import socket
-import socketHandler from "./socket/socket.js";
+// import socketHandler from "./socket/socket.js";
 
 const server = createServer(app);
 const io = new Server(server, {
@@ -31,7 +31,7 @@ const io = new Server(server, {
     }
 });
 
-socketHandler(io); 
+// socketHandler(io); 
 
 //mount the route
 import userRouter from "./Routes/userRoute.js";

@@ -1,8 +1,8 @@
-const generalAttributes = [
+export const generalAttributes = [
   "mobileNo", "lable","subCategory", "title", "description", "image", "price", 
 ];
 
-const categoryAttributes = {
+export const categoryAttributes = {
   Car: ["brand", "purchasedYear", "fuelType", "transmission", "kmDriven", "owner"],
   Bike: ["brand", "purchasedYear", "fuelType", "kmDriven", "owner"],
   Cycle: ["brand", "purchasedYear"],//hasGear add
@@ -11,7 +11,4 @@ const categoryAttributes = {
   Furniture: ["furnitureType", "material","condition"]
 };
 
-export default {
-  generalAttributes,
-  categoryAttributes
-};
+
