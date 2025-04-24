@@ -1,5 +1,5 @@
 export const generalAttributes = [
-  "mobileNo", "lable","subCategory", "title", "description", "image", "price", 
+  "mobileNo", "label","subCategory", "title", "description", "image", "price", 
 ];
 
 export const categoryAttributes = {

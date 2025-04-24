@@ -3,7 +3,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
 
-export async function loginUsers(req, res) {
+export async function loginUser(req, res) {
     const { mobileNo, password } = req.body;
 
     if (!mobileNo || !password) {
@@ -44,7 +44,7 @@ export async function loginUsers(req, res) {
     }
 }
 
-export async function registerUsers(req, res) {
+export async function registerUser(req, res) {
     const { name, mobileNo, email, password, profileImg } = req.body;
     const session = neo4jDriver.session();
 
