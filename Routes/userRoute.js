@@ -1,10 +1,9 @@
-import { Router } from "express";
-const router = Router();
+import express from "express";
+import { loginUsers, registerUsers, updateContactsList } from "../Controllers/userController.js";
 
-import { loginUser, registerUser, updateContactsList } from '../Controllers/userController.js';
-import { isAuthenticated } from "../Middlewares/auth.js";
+const router = express.Router();
 
-router.post("/login", getUsers);
+router.post("/login", loginUsers);
 router.post("/register", registerUsers);
 router.post("/updateContactList", updateContactsList);
 

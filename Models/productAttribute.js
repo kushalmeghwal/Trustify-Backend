@@ -12,8 +12,6 @@ const categoryAttributes = {
 };
 
 export default {
-
-
   generalAttributes,
   categoryAttributes
 };
