@@ -9,9 +9,11 @@ const password = process.env.DATABASE_PASSWORD;
 if (!uri || !user || !password) {
     throw new Error("Neo4j database connection details are missing in environment variables.");
 }
-
-
-const neo4jDriver = _driver(uri, auth.basic(user, password));
-console.log("Connected to Neo4j database successfully");
-
+let neo4jDriver;
+try{
+    neo4jDriver = _driver(uri, auth.basic(user, password));
+    console.log("Connected to Neo4j database successfully");
+}catch(error){
+    console.log("Failed to connected to Neo4j database",error);
+}
 export default neo4jDriver ; 
