@@ -98,8 +98,17 @@ export async function getProduct(req, res) {
         const data = result.records.map(record => ({
             contactName: record.get("ContactName"),
             contactMobile: record.get("ContactMobile"),
-            products: record.get("Products")
-        }));
+            products: record.get("Products").map(product => ({
+              id: product.identity.low, // Assuming identity has a low value as the product ID
+              title: product.properties.title, 
+              description: product.properties.description,
+              listingDate: product.properties.listingDate,
+              category: product.properties.subCategory,
+              price: parseInt(product.properties.price), // Converting price to integer
+              image: product.properties.image || [],// Assuming it's an array of image URLs
+              details:JSON.parse(product.properties.details), 
+            }))
+          }));
 
         return res.status(200).json({ success: true, data });
     } catch (error) {
