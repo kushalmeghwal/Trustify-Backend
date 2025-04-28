@@ -1,6 +1,7 @@
 
 import  neo4jDriver  from '../config/database.js';
 import pQuery from '../Models/productQuery.js';
+import { createAndDispatchNotifications } from '../services/notificationService.js'
 import { generalAttributes, categoryAttributes } from '../Models/productAttribute.js';
 
 
@@ -63,9 +64,26 @@ export async function addProduct(req, res) {
         const queryParams = prepareProductData(req, subCategory);
         session = neo4jDriver.session();
         const result = await session.run(pQuery, queryParams);
-        const product = result.records[0].get('p').properties;
+        if (result.records.length === 0) {
+            return res.status(500).json({ error: 'Failed to add product, no data returned' });
+        }
+  
+        const productNode = result.records[0].get('p');
+  
+        if (!productNode) {
+            return res.status(500).json({ error: 'Product creation failed, no product node returned' });
+        }
+  
+        const product = productNode.properties;
+        console.log('Product:', product); 
+  
+        await createAndDispatchNotifications({
+          senderMobileNo: req.body.mobileNo,
+          productId: product.id,
+          io: req.app.get('io'),
+        });
 
-        return res.status(201).json({ success: true, product });
+        return res.status(201).json({ success: true,});
     } catch (error) {
         console.error('Error while adding product:', error);
         return res.status(500).json({ error: 'Internal server error, please try again' });
