@@ -1,8 +1,8 @@
 //import express and make an app structure
 import express, { urlencoded, json } from "express";
 const app = express();
-
-import { Server } from "socket.io";
+import { Server } from 'socket.io';
+import { setupSocket } from "./sockets/socketHandler.js";
 import { createServer } from "http";
 import cors from "cors";
 app.use(cors());
@@ -25,11 +25,18 @@ app.get('/',(req,res)=>{
 
 const server = createServer(app);
 const io = new Server(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
+  cors: {
+      origin: '*',
+      methods: ['GET', 'POST'],
+  }
 });
+
+// Attach io inside express app
+app.set('io', io);
+io.on('connection', (socket) => {
+  setupSocket(socket);  // Call setupSocket when a new connection occurs
+});
+
 
 // socketHandler(io); 
 
