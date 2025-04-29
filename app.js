@@ -43,9 +43,13 @@ io.on('connection', (socket) => {
 //mount the route
 import userRouter from "./Routes/userRoute.js";
 import productRouter from "./Routes/productRoute.js";
+import notificationRouter from "./Routes/notificationRoute.js";
+
 
 app.use("/api/v1", userRouter);
 app.use("/api/v1/product",productRouter);
+app.use("/api/v1/notification", notificationRouter);
+
 
 //start the server
 server.listen(PORT, () => {
