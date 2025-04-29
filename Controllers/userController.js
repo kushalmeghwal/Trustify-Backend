@@ -135,36 +135,21 @@ async function updateRelationship(mobileNo) {
 }
 
 export async function verifyUserForPasswordReset(req, res) {
-    const { email, mobile } = req.body;
+    const { email, mobileNo } = req.body;
     
-    if (!email || !mobile) {
+    if (!email || !mobileNo) {
         return res.status(400).json({ 
             success: false, 
-            message: "Email and mobile number are required" 
+            message: "Email and mobileNo number are required" 
         });
     }
 
-    // Format mobile number
-    let formattedMobile = mobile;
-    // Remove any existing +91 prefix
-    formattedMobile = formattedMobile.replace(/^\+91/, '');
-    // Remove any non-digit characters
-    formattedMobile = formattedMobile.replace(/\D/g, '');
-    // Check if it's a 10-digit number
-    if (formattedMobile.length === 10) {
-        formattedMobile = '+91' + formattedMobile;
-    } else if (formattedMobile.length !== 12) {
-        return res.status(400).json({
-            success: false,
-            message: "Invalid mobile number format"
-        });
-    }
 
     const session = neo4jDriver.session();
     try {
         const result = await session.run(
-            "MATCH (u:User {mobileNo: $mobile, email: $email}) RETURN u",
-            { mobile: formattedMobile, email }
+            "MATCH (u:User {mobileNo: $mobileNo, email: $email}) RETURN u",
+            { mobileNo, email }
         );
 
         if (result.records.length === 0) {
@@ -190,29 +175,13 @@ export async function verifyUserForPasswordReset(req, res) {
 }
 
 export async function resetPassword(req, res) {
-    const { mobile, newPassword } = req.body;
-    console.log('Reset password request received for mobile:', mobile);
+    const { mobileNo, newPassword } = req.body;
+    console.log('Reset password request received for mobileNo:', mobileNo);
 
-    if (!mobile || !newPassword) {
+    if (!mobileNo || !newPassword) {
         return res.status(400).json({ 
             success: false, 
-            message: "Mobile number and new password are required" 
-        });
-    }
-
-    // Format mobile number
-    let formattedMobile = mobile;
-    // Remove any existing +91 prefix
-    formattedMobile = formattedMobile.replace(/^\+91/, '');
-    // Remove any non-digit characters
-    formattedMobile = formattedMobile.replace(/\D/g, '');
-    // Check if it's a 10-digit number
-    if (formattedMobile.length === 10) {
-        formattedMobile = '+91' + formattedMobile;
-    } else if (formattedMobile.length !== 12) {
-        return res.status(400).json({
-            success: false,
-            message: "Invalid mobile number format"
+            message: "mobileNo number and new password are required" 
         });
     }
 
@@ -220,12 +189,12 @@ export async function resetPassword(req, res) {
     try {
         // First verify if user exists
         const userResult = await session.run(
-            "MATCH (u:User {mobileNo: $mobile}) RETURN u",
-            { mobile: formattedMobile }
+            "MATCH (u:User {mobileNo: $mobileNoNo}) RETURN u",
+            { mobileNo }
         );
 
         if (userResult.records.length === 0) {
-            console.log('User not found for mobile:', formattedMobile);
+            console.log('User not found for mobileNo:', mobileNo);
             return res.status(404).json({ 
                 success: false, 
                 message: 'User not found' 
@@ -249,19 +218,19 @@ export async function resetPassword(req, res) {
 
         // Update the password
         const result = await session.run(
-            "MATCH (u:User {mobileNo: $mobile}) SET u.password = $hashedPassword RETURN u",
-            { mobile: formattedMobile, hashedPassword }
+            "MATCH (u:User {mobileNo: $mobileNo}) SET u.password = $hashedPassword RETURN u",
+            { mobileNo, hashedPassword }
         );
 
         if (result.records.length > 0) {
-            console.log('Password updated successfully for user:', formattedMobile);
+            console.log('Password updated successfully for user:', mobileNo);
             return res.status(200).json({ 
                 success: true, 
                 message: "Password reset successfully" 
             });
         }
 
-        console.log('Failed to update password for user:', formattedMobile);
+        console.log('Failed to update password for user:', mobileNo);
         return res.status(500).json({ 
             success: false, 
             message: "Failed to reset password" 
