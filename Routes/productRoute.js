@@ -1,11 +1,12 @@
 import express from "express";
-import { getProduct,getProductById, addProduct ,verifyProduct} from "../Controllers/productController.js";
+import { getProduct, addProduct, getUserProducts } from "../Controllers/productController.js";
+import { verifyToken } from "../Middlewares/auth.js";
 
 const router = express.Router();
 
 router.get("/getProducts", getProduct);
 router.get("/getProductById",getProductById);
 router.post("/addProduct", addProduct);
-router.get("/verifyProduct",verifyProduct);
+router.get("/user/:userId", verifyToken, getUserProducts);
 
 export default router;

@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 
-export const isAuthenticated = (req, res, next) => {
+export const verifyToken = (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({ status: false, error: "Unauthorized, please provide a valid token" });
