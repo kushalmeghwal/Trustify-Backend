@@ -5,6 +5,7 @@ import { verifyToken } from "../Middlewares/auth.js";
 const router = express.Router();
 
 router.get("/getProducts", getProduct);
+router.get("/getProductById",getProductById);
 router.post("/addProduct", addProduct);
 router.get("/user/:userId", verifyToken, getUserProducts);
 

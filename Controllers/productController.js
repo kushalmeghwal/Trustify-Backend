@@ -1,5 +1,6 @@
 import  neo4jDriver  from '../config/database.js';
 import pQuery from '../Models/productQuery.js';
+import { createAndDispatchNotifications } from './notificationController.js'
 import { generalAttributes, categoryAttributes } from '../Models/productAttribute.js';
 import { verifyToken } from '../Middlewares/auth.js';
 import jwt from 'jsonwebtoken';
@@ -46,6 +47,7 @@ function validateProductData(req, category) {
 }
 
 export async function addProduct(req, res) {
+    console.log('req received');
     let session;
     try {
         const { subCategory } = req.body;

@@ -1,7 +1,7 @@
 
 const querie=
 `CALL apoc.create.node(
-  ['Product',$label], 
+  ['Product', $label], 
   {
     id: apoc.create.uuid(),
     subCategory: $subCategory,
@@ -18,7 +18,10 @@ WITH p
 MATCH (u:User { mobileNo: $mobileNo }) 
 MERGE (u)-[r:LISTED]->(p)
 SET r.isSold = false
-RETURN p
+
+WITH u.name AS sellerName, p
+RETURN sellerName,p
+
 `;
 
 export default querie;

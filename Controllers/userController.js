@@ -136,7 +136,7 @@ async function updateRelationship(mobileNo) {
 
 export async function verifyUserForPasswordReset(req, res) {
     const { email, mobile } = req.body;
-
+    
     if (!email || !mobile) {
         return res.status(400).json({ 
             success: false, 
@@ -144,11 +144,27 @@ export async function verifyUserForPasswordReset(req, res) {
         });
     }
 
+    // Format mobile number
+    let formattedMobile = mobile;
+    // Remove any existing +91 prefix
+    formattedMobile = formattedMobile.replace(/^\+91/, '');
+    // Remove any non-digit characters
+    formattedMobile = formattedMobile.replace(/\D/g, '');
+    // Check if it's a 10-digit number
+    if (formattedMobile.length === 10) {
+        formattedMobile = '+91' + formattedMobile;
+    } else if (formattedMobile.length !== 12) {
+        return res.status(400).json({
+            success: false,
+            message: "Invalid mobile number format"
+        });
+    }
+
     const session = neo4jDriver.session();
     try {
         const result = await session.run(
             "MATCH (u:User {mobileNo: $mobile, email: $email}) RETURN u",
-            { mobile, email }
+            { mobile: formattedMobile, email }
         );
 
         if (result.records.length === 0) {
@@ -184,16 +200,32 @@ export async function resetPassword(req, res) {
         });
     }
 
+    // Format mobile number
+    let formattedMobile = mobile;
+    // Remove any existing +91 prefix
+    formattedMobile = formattedMobile.replace(/^\+91/, '');
+    // Remove any non-digit characters
+    formattedMobile = formattedMobile.replace(/\D/g, '');
+    // Check if it's a 10-digit number
+    if (formattedMobile.length === 10) {
+        formattedMobile = '+91' + formattedMobile;
+    } else if (formattedMobile.length !== 12) {
+        return res.status(400).json({
+            success: false,
+            message: "Invalid mobile number format"
+        });
+    }
+
     const session = neo4jDriver.session();
     try {
         // First verify if user exists
         const userResult = await session.run(
             "MATCH (u:User {mobileNo: $mobile}) RETURN u",
-            { mobile }
+            { mobile: formattedMobile }
         );
 
         if (userResult.records.length === 0) {
-            console.log('User not found for mobile:', mobile);
+            console.log('User not found for mobile:', formattedMobile);
             return res.status(404).json({ 
                 success: false, 
                 message: 'User not found' 
@@ -218,18 +250,18 @@ export async function resetPassword(req, res) {
         // Update the password
         const result = await session.run(
             "MATCH (u:User {mobileNo: $mobile}) SET u.password = $hashedPassword RETURN u",
-            { mobile, hashedPassword }
+            { mobile: formattedMobile, hashedPassword }
         );
 
         if (result.records.length > 0) {
-            console.log('Password updated successfully for user:', mobile);
+            console.log('Password updated successfully for user:', formattedMobile);
             return res.status(200).json({ 
                 success: true, 
                 message: "Password reset successfully" 
             });
         }
 
-        console.log('Failed to update password for user:', mobile);
+        console.log('Failed to update password for user:', formattedMobile);
         return res.status(500).json({ 
             success: false, 
             message: "Failed to reset password" 
@@ -261,6 +293,7 @@ export async function getUserProfile(req, res) {
         }
 
         const user = result.records[0].get('u').properties;
+        console.log("got the profile");
         return res.status(200).json({
             success: true,
             data: {
@@ -299,7 +332,7 @@ export async function updateUserProfile(req, res) {
                 message: 'User not found'
             });
         }
-
+console.log("profile updated");
         return res.status(200).json({
             success: true,
             message: 'Profile updated successfully',
@@ -332,7 +365,7 @@ export async function updateProfileImage(req, res) {
                 message: 'User not found'
             });
         }
-
+console.log("image updated");
         return res.status(200).json({
             success: true,
             message: 'Profile image updated successfully',

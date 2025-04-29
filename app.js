@@ -25,10 +25,10 @@ app.get('/',(req,res)=>{
 
 const server = createServer(app);
 const io = new Server(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
+  cors: {
+      origin: '*',
+      methods: ['GET', 'POST'],
+  }
 });
 //using io in http requests
 app.set("io", io);
@@ -64,8 +64,8 @@ io.use((socket, next) => {
 });
 
 // Attach socket handler
-import socketHandler from "./socket/socket.js";
-socketHandler(io);
+import { setupSocket } from "./sockets/socketHandler.js";
+io.on('connection', setupSocket);
 //start the server
 server.listen(PORT, () => {
   console.log(` Server is running successfully on port ${PORT}`);
