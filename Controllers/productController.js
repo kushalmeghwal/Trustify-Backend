@@ -1,4 +1,3 @@
-
 import neo4jDriver from '../config/database.js';
 import pQuery from '../Models/productQuery.js';
 import { createAndDispatchNotifications } from './notificationController.js'
@@ -84,7 +83,7 @@ export async function addProduct(req, res) {
         await createAndDispatchNotifications({
             senderId: req.body.id,
             productId: product.id,
-            title:'New Product added',
+            title: 'New Product added',
             message: `your friend ${sellerName} has listed new product`,
             io: req.app.get('io'),
         });
@@ -100,46 +99,67 @@ export async function addProduct(req, res) {
 
 export async function getProduct(req, res) {
     const { mobileNo } = req.query;
+    console.log(mobileNo);
     let session;
     try {
         session = neo4jDriver.session();
         const query = `
-            MATCH (u:User {mobileNo: $mobileNo})
-            MATCH (u)-[:HAS_CONTACT]->(contacts)
-            MATCH (contacts)-[:HAS_CONTACT]->(u)
-            OPTIONAL MATCH (contacts)-[:LISTED]->(p1:Product)
-            OPTIONAL MATCH (contacts)-[:HAS_VERIFIED]->(p2:Product)
-            WITH contacts, 
-                contacts.name AS ContactName, 
-                contacts.mobileNo AS ContactMobile, 
-                COLLECT(DISTINCT p1) AS Products1, 
-                COLLECT(DISTINCT p2) AS Products2
-            RETURN ContactName, 
-                   ContactMobile, 
-                   apoc.coll.union(coalesce(Products1, []), coalesce(Products2, [])) AS Products;
+           MATCH (u:User {mobileNo:$mobileNo})
+      MATCH (u)-[:HAS_CONTACT]->(contact:User)-[:HAS_CONTACT]->(u)
+
+
+      OPTIONAL MATCH (contact)-[r1:LISTED]->(p1:Product)  WHERE r1.isSold = false
+      OPTIONAL MATCH (contact)-[:HAS_VERIFIED]->(p2:Product)<-[r2:LISTED]-(sellerName:User) WHERE r2.isSold = false AND sellerName <> u
+
+
+      WITH
+        COLLECT(DISTINCT { product: p2, seller: sellerName.name, verifiedBy: contact.name }) + 
+        COLLECT(DISTINCT { product: p1, seller: contact.name, verifiedBy: NULL }) AS Products
+
+      UNWIND Products AS p
+      RETURN p.product AS product, p.verifiedBy AS verifiedBy, p.seller AS seller
+
         `;
         const result = await session.run(query, { mobileNo });
-        const data = result.records.map(record => ({
-            contactName: record.get("ContactName"),
-            contactMobile: record.get("ContactMobile"),
-            products: record.get("Products").map(product => ({
-                id: product.properties.id, // Assuming identity has a low value as the product ID
-                title: product.properties.title,
-                description: product.properties.description,
-                listingDate: product.properties.listingDate,
-                category: product.properties.subCategory,
-                price: parseInt(product.properties.price), // Converting price to integer
-                image: product.properties.image || [],// Assuming it's an array of image URLs
-                details: JSON.parse(product.properties.details),
-            }))
-        }));
+        const products = [];
 
-        return res.status(200).json({ success: true, data });
+        result.records.forEach(record => {
+            const productNode = record.get("product");
+            const verifiedBy = record.get("verifiedBy");
+            const seller = record.get("seller");
+
+            if (productNode) {
+                products.push({
+                    id: productNode.properties.id,
+                    title: productNode.properties.title,
+                    description: productNode.properties.description,
+                    listingDate: `${productNode.properties.listingDate.year.low}-${productNode.properties.listingDate.month.low}-${productNode.properties.listingDate.day.low}`,
+                    category: productNode.properties.subCategory,
+                    price: parseInt(productNode.properties.price),
+                    details: JSON.parse(productNode.properties.details),
+                    image: productNode.properties.image || [],
+                    verifiedBy: verifiedBy || null,
+                    seller: seller || null
+                });
+
+            }
+        });
+
+        if (products.length > 0) {
+            res.status(200).json({ success: true, products });
+        } else {
+            res.status(404).json({ success: false, message: "No products found" });
+        }
+
     } catch (error) {
         console.error('Error retrieving products:', error);
-        return res.status(500).json({ error: 'Internal server error' });
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Internal server error' });
+        }
     } finally {
-        if (session) await session.close();
+        if (session) {
+            await session.close();
+        }
     }
 }
 export async function getProductById(req, res) {
@@ -150,12 +170,33 @@ export async function getProductById(req, res) {
         session = neo4jDriver.session();
         const result = await session.run(
             `
-            MATCH (s:User)-[:LISTED]->(p:Product {id: $productId})
-            RETURN s.name AS contactName,
-                   s.MobileNo AS contactMobile,
-                   p AS product
+                MATCH (u:User {id: $userId})
+        OPTIONAL MATCH (u)-[:HAS_CONTACT]->(contact:User)-[:HAS_CONTACT]->(u)
+        OPTIONAL MATCH (u)-[:LISTED]->(pSelf:Product)
+          WHERE pSelf.id = $productId 
+
+        OPTIONAL MATCH (u)-[:HAS_VERIFIED]->(pselfVerified:Product)<-[:LISTED]-(contact)
+          WHERE pselfVerified.id = $productId 
+
+        OPTIONAL MATCH (contact)-[:LISTED]->(pContact:Product)
+          WHERE pContact.id = $productId 
+
+            OPTIONAL MATCH (contact)-[:HAS_VERIFIED]->(pVerified:Product)<-[:LISTED]-(seller:User)
+            WHERE pVerified.id = $productId 
+            WITH 
+            COLLECT(DISTINCT { product: pSelf, seller: u.name,sellerId: u.id, verifiedBy: NULL,verifierId:NULL }) +
+            COLLECT(DISTINCT { product: pselfVerified, seller: contact.name,sellerId: contact.id, verifiedBy: u.name , verifierId : u.id}) +
+            COLLECT(DISTINCT { product: pContact, seller: contact.name,sellerId: contact.id, verifiedBy: NULL,verifierId:NULL }) +
+            COLLECT(DISTINCT { product: pVerified, seller: seller.name,sellerId: seller.id, verifiedBy: contact.name ,verifierId : contact.id}) AS Products
+
+            UNWIND Products AS p
+            WITH p
+            WHERE p.product IS NOT NULL
+            RETURN p.product AS product, p.seller AS seller, p.verifiedBy AS verifiedBy,p.verifierId AS verifierId,p.sellerId as sellerId
+            LIMIT 1
+
             `,
-            { productId: req.query.productId }
+            { productId: req.query.productId ,userId: req.query.userId}
         );
         const record = result.records[0];
 
@@ -163,10 +204,7 @@ export async function getProductById(req, res) {
             return res.status(404).json({ success: false, message: "Product not found" });
         }
 
-        const data = {
-            contactName: record.get("contactName"),
-            contactMobile: record.get("contactMobile"),
-            products: [
+        const product = 
                 {
                     id: record.get("product").properties.id,
                     title: record.get("product").properties.title,
@@ -176,12 +214,15 @@ export async function getProductById(req, res) {
                     price: parseInt(record.get("product").properties.price),
                     image: record.get("product").properties.image || [],
                     details: JSON.parse(record.get("product").properties.details),
-                }
-            ]
-        };
-        console.log(data);
+                    seller:record.get('seller')||null,
+                    verifiedBy:record.get('verifiedBy')||null,
+                    verifierId:record.get('verifierId')||null,
+                    sellerId:record.get('sellerId'),
+                };
+            
+        
 
-        return res.status(200).json({ success: true, data: [data] });
+        return res.status(200).json({ success: true, product });
     } catch (error) {
         console.error('Error retrieving products:', error);
         return res.status(500).json({ error: 'Internal server error' });
@@ -222,7 +263,7 @@ export async function verifyProduct(req, res) {
         await createAndDispatchNotifications({
             senderId: req.query.userId,
             productId: product.id,
-            title:'Verified Product',
+            title: 'Verified Product',
             message: `your Friend ${verifiedBy} verify an product tap to See `,
             io: req.app.get('io'),
         });
@@ -231,6 +272,57 @@ export async function verifyProduct(req, res) {
     } catch (error) {
         console.error('Error while adding product:', error);
         return res.status(500).json({ error: 'Internal server error, please try again' });
+    } finally {
+        if (session) await session.close();
+    }
+}
+export async function getMyProducts(req, res) {
+    console.log('req received');
+
+    let session;
+    try {
+        session = neo4jDriver.session();
+        const result = await session.run(
+            `
+            MATCH (s:User {id: $userId})-[:LISTED]->(p:Product)
+            RETURN p AS product
+            `,
+            { userId: req.query.userId }
+        );
+
+
+        if (!result) {
+            return res.status(404).json({ success: false, message: "Product not found" });
+        }
+
+        const records = result.records;
+
+        const products = [];
+
+        result.records.forEach(record => {
+            const productNode = record.get("product");
+
+            if (productNode) {
+                const props = productNode.properties;
+                products.push({
+                    id: props.id,
+                    title: props.title,
+                    description: props.description,
+                    listingDate: props.listingDate,
+                    category: props.subCategory,
+                    price: parseInt(props.price),
+                    details: JSON.parse(props.details),
+                    image: props.image || [],
+                });
+            }
+        });
+
+
+
+        return res.status(200).json({ success: true, products });
+    } catch (error) {
+        console.error('Error retrieving products:', error);
+        return res.status(500).json({ error: 'Internal server error' });
     } finally {
         if (session) await session.close();
     }
