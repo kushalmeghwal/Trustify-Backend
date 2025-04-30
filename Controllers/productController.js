@@ -122,6 +122,7 @@ export async function getProduct(req, res) {
         `;
         const result = await session.run(query, { mobileNo });
         const products = [];
+        const seenIds = new Set();
 
         result.records.forEach(record => {
             const productNode = record.get("product");
@@ -129,21 +130,27 @@ export async function getProduct(req, res) {
             const seller = record.get("seller");
 
             if (productNode) {
-                products.push({
-                    id: productNode.properties.id,
-                    title: productNode.properties.title,
-                    description: productNode.properties.description,
-                    listingDate: `${productNode.properties.listingDate.year.low}-${productNode.properties.listingDate.month.low}-${productNode.properties.listingDate.day.low}`,
-                    category: productNode.properties.subCategory,
-                    price: parseInt(productNode.properties.price),
-                    details: JSON.parse(productNode.properties.details),
-                    image: productNode.properties.image || [],
-                    verifiedBy: verifiedBy || null,
-                    seller: seller || null
-                });
+                const productId = productNode.properties.id;
 
+                if (!seenIds.has(productId)) {
+                    seenIds.add(productId);
+
+                    products.push({
+                        id: productId,
+                        title: productNode.properties.title,
+                        description: productNode.properties.description,
+                        listingDate: `${productNode.properties.listingDate.year.low}-${productNode.properties.listingDate.month.low}-${productNode.properties.listingDate.day.low}`,
+                        category: productNode.properties.subCategory,
+                        price: parseInt(productNode.properties.price),
+                        details: JSON.parse(productNode.properties.details),
+                        image: productNode.properties.image || [],
+                        verifiedBy: verifiedBy || null,
+                        seller: seller || null
+                    });
+                }
             }
         });
+
 
         if (products.length > 0) {
             res.status(200).json({ success: true, products });
@@ -196,7 +203,7 @@ export async function getProductById(req, res) {
             LIMIT 1
 
             `,
-            { productId: req.query.productId ,userId: req.query.userId}
+            { productId: req.query.productId, userId: req.query.userId }
         );
         const record = result.records[0];
 
@@ -204,23 +211,23 @@ export async function getProductById(req, res) {
             return res.status(404).json({ success: false, message: "Product not found" });
         }
 
-        const product = 
-                {
-                    id: record.get("product").properties.id,
-                    title: record.get("product").properties.title,
-                    description: record.get("product").properties.description,
-                    listingDate: record.get("product").properties.listingDate,
-                    category: record.get("product").properties.subCategory,
-                    price: parseInt(record.get("product").properties.price),
-                    image: record.get("product").properties.image || [],
-                    details: JSON.parse(record.get("product").properties.details),
-                    seller:record.get('seller')||null,
-                    verifiedBy:record.get('verifiedBy')||null,
-                    verifierId:record.get('verifierId')||null,
-                    sellerId:record.get('sellerId'),
-                };
-            
-        
+        const product =
+        {
+            id: record.get("product").properties.id,
+            title: record.get("product").properties.title,
+            description: record.get("product").properties.description,
+            listingDate: record.get("product").properties.listingDate,
+            category: record.get("product").properties.subCategory,
+            price: parseInt(record.get("product").properties.price),
+            image: record.get("product").properties.image || [],
+            details: JSON.parse(record.get("product").properties.details),
+            seller: record.get('seller') || null,
+            verifiedBy: record.get('verifiedBy') || null,
+            verifierId: record.get('verifierId') || null,
+            sellerId: record.get('sellerId'),
+        };
+
+
 
         return res.status(200).json({ success: true, product });
     } catch (error) {
