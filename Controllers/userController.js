@@ -29,14 +29,14 @@ export async function loginUser(req, res) {
         }
 
         const token = jwt.sign({
-            id:userNode.properties.id,
+            id: userNode.properties.id,
             name: userNode.properties.name,
             mobileNo: userNode.properties.mobileNo,
             email: userNode.properties.email,
             profileImg: userNode.properties.profileImg
         }, process.env.SECRET_KEY, { expiresIn: '1d' });
 
-        return res.status(200).json({ status: true, token });
+        return res.status(200).json({ status: true, token, id:userNode.properties.id });
     } catch (err) {
         console.error("Database error:", err);
         return res.status(500).json({ status: false, error: "Internal server error" });
@@ -50,19 +50,26 @@ export async function registerUser(req, res) {
     const session = neo4jDriver.session();
 
     try {
-        const existingUser = await session.run(
+        const existingUserWithMobile = await session.run(
             "MATCH (u:User) WHERE u.mobileNo=$mobileNo RETURN u",
             { mobileNo }
         );
-        if (existingUser.records.length > 0) {
-            return res.status(400).json({ error: 'user already exists' });
+        if (existingUserWithMobile.records.length > 0) {
+            return res.status(400).json({ success: false,error: 'user already exists With this mobile number' });
+        }
+        const existingUserWithEmail = await session.run(
+            "MATCH (u:User) WHERE u.email=$email RETURN u",
+            { email }
+        );
+        if (existingUserWithEmail.records.length > 0) {
+            return res.status(400).json({ success: false,error: 'user already exists With this email' });
         }
 
         let hashedPassword;
         try {
             hashedPassword = await bcrypt.hash(password, 10);
         } catch (err) {
-            return res.status(500).json({ message: 'error while hashing password' });
+            return res.status(500).json({ success: false,message: 'error while hashing password' });
         }
 
         const result = await session.run(
@@ -71,21 +78,22 @@ export async function registerUser(req, res) {
         );
 
         if (result) {
-            return res.status(200).json({ message: "user registered successfully from backend" });
+            return res.status(200).json({ success: true, message: "user registered successfully from backend" });
         }
 
-        return res.status(500).json({ error: "User registration failed from backend" });
+        return res.status(500).json({ success: false,error: "User registration failed from backend" });
     } catch (err) {
         console.error("Error registering user:", err);
-        return res.status(500).json({ error: "Internal server error" });
+        return res.status(500).json({ success: false,error: "Internal server error" });
     } finally {
         await session.close();
     }
 }
-
 export async function updateContactsList(req, res) {
     const { mobileNo, contacts } = req.body;
     const session = neo4jDriver.session();
+    console.log(mobileNo)
+    console.log(contacts)
 
     try {
         const result = await session.run(
@@ -127,6 +135,287 @@ async function updateRelationship(mobileNo) {
         }
     } catch (err) {
         console.error("Error updating relationships:", err);
+    } finally {
+        await session.close();
+    }
+}
+
+export async function verifyUserForPasswordReset(req, res) {
+    const { email, mobile } = req.body;
+
+    if (!email || !mobile) {
+        return res.status(400).json({ 
+            success: false, 
+            message: "Email and mobile number are required" 
+        });
+    }
+    // Validate and format mobile number
+    const mobileRegex = /^(\+91)?[0-9]\d{9}$/;
+    if (!mobileRegex.test(mobile)) {
+  
+        return res.status(400).json({ 
+            success: false, 
+            message: "Invalid mobile number format. Please provide a valid Indian mobile number" 
+        });
+    }
+
+    const formattedMobile = mobile.startsWith('+91') ? mobile : `+91${mobile}`;
+
+console.log(formattedMobile);
+    const session = neo4jDriver.session();
+    try {
+        const result = await session.run(
+            "MATCH (u:User {mobileNo: $mobile, email: $email}) RETURN u",
+            { mobile: formattedMobile, email }
+        );
+
+        if (result.records.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'No user found with these credentials' 
+            });
+        }
+
+        return res.status(200).json({ 
+            success: true, 
+            message: 'User verified successfully' 
+        });
+    } catch (err) {
+        console.error("Database error:", err);
+        return res.status(500).json({ 
+            success: false, 
+            message: "Internal server error" 
+        });
+    } finally {
+        await session.close();
+    }
+}
+
+export async function resetPassword(req, res) {
+    const { mobile, newPassword } = req.body;
+    console.log(mobile);
+    if (!mobile || !newPassword) {
+        return res.status(400).json({ 
+            success: false, 
+            message: "Mobile number and new password are required" 
+        });
+    }
+
+    // Validate and format mobile number
+    const mobileRegex = /^(\+91)?[0-9]\d{9}$/;
+    if (!mobileRegex.test(mobile)) {
+        return res.status(400).json({ 
+            success: false, 
+            message: "Invalid mobile number format. Please provide a valid Indian mobile number" 
+        });
+    }
+
+    // Format mobile number to +91 format if not already
+    const formattedMobile = mobile.startsWith('+91') ? mobile : `+91${mobile}`;
+
+    const session = neo4jDriver.session();
+    try {
+        const userResult = await session.run(
+            "MATCH (u:User {mobileNo: $mobile}) RETURN u",
+            { mobile: formattedMobile }
+        );
+
+        if (userResult.records.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'User not found' 
+            });
+        }
+
+        let hashedPassword;
+        try {
+            hashedPassword = await bcrypt.hash(newPassword, 10);
+        } catch (err) {
+            return res.status(500).json({ 
+                success: false, 
+                message: 'Error while hashing password' 
+            });
+        }
+
+        const result = await session.run(
+            "MATCH (u:User {mobileNo: $mobileNo}) SET u.password = $hashedPassword RETURN u",
+            { mobileNo: formattedMobile, hashedPassword }
+        );
+
+        if (result.records.length > 0) {
+            return res.status(200).json({ 
+                success: true, 
+                message: "Password reset successfully" 
+            });
+        }
+
+        return res.status(500).json({ 
+            success: false, 
+            message: "Failed to reset password" 
+        });
+    } catch (err) {
+        console.error("Error resetting password:", err);
+        return res.status(500).json({ 
+            success: false, 
+            message: "Internal server error" 
+        });
+    } finally {
+        await session.close();
+    }
+}
+
+export async function getUserProfile(req, res) {
+    const session = neo4jDriver.session();
+    try {
+        const result = await session.run(
+            "MATCH (u:User {mobileNo: $mobileNo}) RETURN u",
+            { mobileNo: req.user.mobileNo }
+        );
+
+        if (result.records.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        const user = result.records[0].get('u').properties;
+        console.log("got the profile");
+        return res.status(200).json({
+            success: true,
+            data: {
+                name: user.name,
+                email: user.email,
+                mobileNo: user.mobileNo,
+                profileImg: user.profileImg,
+                location: user.location,
+                trustScore: user.trustScore
+            }
+        });
+    } catch (err) {
+        console.error("Error fetching user profile:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    } finally {
+        await session.close();
+    }
+}
+
+export async function updateUserProfile(req, res) {
+    const { name } = req.body;
+    const session = neo4jDriver.session();
+
+    try {
+        const result = await session.run(
+            "MATCH (u:User {mobileNo: $mobileNo}) SET u.name = $name RETURN u",
+            { mobileNo: req.user.mobileNo, name }
+        );
+
+        if (result.records.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+console.log("profile updated");
+        return res.status(200).json({
+            success: true,
+            message: 'Profile updated successfully',
+            data: result.records[0].get('u').properties
+        });
+    } catch (err) {
+        console.error("Error updating user profile:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    } finally {
+        await session.close();
+    }
+}
+
+export async function updateProfileImage(req, res) {
+    const { profileImg } = req.body;
+    const session = neo4jDriver.session();
+
+    try {
+        const result = await session.run(
+            "MATCH (u:User {mobileNo: $mobileNo}) SET u.profileImg = $profileImg RETURN u",
+            { mobileNo: req.user.mobileNo, profileImg }
+        );
+
+        if (result.records.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+console.log("image updated");
+        return res.status(200).json({
+            success: true,
+            message: 'Profile image updated successfully',
+            data: result.records[0].get('u').properties
+        });
+    } catch (err) {
+        console.error("Error updating profile image:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    } finally {
+        await session.close();
+    }
+}
+
+export async function updateUserPassword(req, res) {
+    const { currentPassword, newPassword } = req.body;
+    const session = neo4jDriver.session();
+
+    try {
+        // First verify current password
+        const userResult = await session.run(
+            "MATCH (u:User {mobileNo: $mobileNo}) RETURN u",
+            { mobileNo: req.user.mobileNo }
+        );
+
+        if (userResult.records.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        const user = userResult.records[0].get('u').properties;
+        const passwordMatch = await bcrypt.compare(currentPassword, user.password);
+        
+        if (!passwordMatch) {
+            return res.status(401).json({
+                success: false,
+                message: 'Current password is incorrect'
+            });
+        }
+
+        // Hash new password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        // Update password
+        const result = await session.run(
+            "MATCH (u:User {mobileNo: $mobileNo}) SET u.password = $hashedPassword RETURN u",
+            { mobileNo: req.user.mobileNo, hashedPassword }
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: 'Password updated successfully'
+        });
+    } catch (err) {
+        console.error("Error updating password:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
     } finally {
         await session.close();
     }
