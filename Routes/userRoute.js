@@ -13,6 +13,6 @@ router.post("/reset-password", resetPassword);
 // Protected routes
 router.put("/user/profile/image", verifyToken, updateProfileImage);
 router.put("/user/password", verifyToken, updateUserPassword);
-router.post("/updateContactList", verifyToken, updateContactsList);
+router.post("/updateContactList", updateContactsList);
 
 export default router;
