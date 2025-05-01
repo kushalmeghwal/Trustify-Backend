@@ -81,21 +81,23 @@ export const createAndDispatchNotifications = async ({ senderId, productId,messa
     const result = await session.run(
       `MATCH (sender:User {id: $senderId})
       MATCH (sender)-[:HAS_CONTACT]->(u:User)-[:HAS_CONTACT]->(sender)
-      WITH sender, collect(u) AS mutuals,
-           apoc.create.uuid() AS notifId,
-           datetime() AS ts
+      WITH sender, collect(u) AS mutuals
+      WITH sender, mutuals, apoc.create.uuid() AS notifId, datetime() AS ts
+
       CREATE (n:Notification {
         id: notifId,
-        title:$title,
+        title: $title,
         message: $message,
         productId: $productId,
         senderId: sender.id,
         timestamp: ts
       })
+
       WITH n, mutuals
       UNWIND mutuals AS user
       MERGE (n)-[r:SENT_TO]->(user)
       SET r.isRead = false
+
       RETURN n, user.id AS contactId, r.isRead AS isRead`,
       { senderId, productId,message,title}
     );
