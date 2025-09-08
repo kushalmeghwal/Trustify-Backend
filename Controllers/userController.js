@@ -149,7 +149,6 @@ export async function verifyUserForPasswordReset(req, res) {
             message: "Email and mobile number are required" 
         });
     }
-    // Validate and format mobile number
     const mobileRegex = /^(\+91)?[0-9]\d{9}$/;
     if (!mobileRegex.test(mobile)) {
   
@@ -201,7 +200,6 @@ export async function resetPassword(req, res) {
         });
     }
 
-    // Validate and format mobile number
     const mobileRegex = /^(\+91)?[0-9]\d{9}$/;
     if (!mobileRegex.test(mobile)) {
         return res.status(400).json({ 
@@ -210,7 +208,6 @@ export async function resetPassword(req, res) {
         });
     }
 
-    // Format mobile number to +91 format if not already
     const formattedMobile = mobile.startsWith('+91') ? mobile : `+91${mobile}`;
 
     const session = neo4jDriver.session();
@@ -326,10 +323,8 @@ export async function updateUserPassword(req, res) {
             });
         }
 
-        // Hash new password
         const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-        // Update password
         const result = await session.run(
             "MATCH (u:User {mobileNo: $mobileNo}) SET u.password = $hashedPassword RETURN u",
             { mobileNo: req.user.mobileNo, hashedPassword }

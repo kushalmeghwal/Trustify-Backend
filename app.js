@@ -1,10 +1,18 @@
 //import express and make an app structure
 import express, { urlencoded, json } from "express";
-const app = express();
 import { Server } from 'socket.io';
 import { setupSocket } from "./sockets/socketHandler.js";
 import { createServer } from "http";
 import cors from "cors";
+//mount the route
+import userRouter from "./Routes/userRoute.js";
+import productRouter from "./Routes/productRoute.js";
+import notificationRouter from "./Routes/notificationRoute.js";
+import chatRouter from "./Routes/chatRoutes.js";
+
+
+const app = express();
+
 app.use(cors());
 
 //import configuration
@@ -20,8 +28,7 @@ app.get('/',(req,res)=>{
   res.send('working fine');
 })
 
-//import socket
-// import socketHandler from "./socket/socket.js";
+
 
 const server = createServer(app);
 const io = new Server(server, {
@@ -34,21 +41,18 @@ const io = new Server(server, {
 // Attach io inside express app
 app.set('io', io);
 io.on('connection', (socket) => {
-  setupSocket(socket);  // Call setupSocket when a new connection occurs
+  setupSocket(io,socket);  // Call setupSocket when a new connection occurs
 });
 
 
-// socketHandler(io); 
 
-//mount the route
-import userRouter from "./Routes/userRoute.js";
-import productRouter from "./Routes/productRoute.js";
-import notificationRouter from "./Routes/notificationRoute.js";
+
 
 
 app.use("/api/v1", userRouter);
 app.use("/api/v1/product",productRouter);
 app.use("/api/v1/notification", notificationRouter);
+app.use("/api/v1/chat",chatRouter);
 
 
 //start the server
